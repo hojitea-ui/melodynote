@@ -15,8 +15,14 @@ const REASON_KO = {
   isolated_leap: "앞뒤 음과 동떨어진 높이 · 반주 음 의심",
 };
 const STAGE_KO = {
-  poly: { pitch: "음 인식 · 다성", segment: "멜로디 고르기" },
-  mono: { pitch: "음높이 인식", segment: "음 나누기" },
+  poly: {
+    pitch: ["음 인식", "AI가 양손의 음을 모두 찾아요"],
+    segment: ["멜로디 고르기", "가장 높은 줄을 멜로디로 골라요"],
+  },
+  mono: {
+    pitch: ["음높이 인식", "한 줄 음높이를 따라가요"],
+    segment: ["음 나누기", "음이 바뀌는 지점을 찾아요"],
+  },
 };
 
 const S = {
@@ -53,20 +59,30 @@ function watchSections() {
   const meter = $("secMeter");
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) {
-      if (e.isIntersecting) meter.textContent = e.target.id === "secScore" ? "SEC 02 / SCORE" : "SEC 01 / INPUT";
+      if (e.isIntersecting) meter.textContent = { secInput: "SEC 01 / INPUT", secRun: "SEC 02 / RUN", secScore: "SEC 03 / SCORE" }[e.target.id];
     }
   }, { rootMargin: "-40% 0px -55% 0px" });
-  io.observe($("secInput"));
-  io.observe($("secScore"));
+  ["secInput", "secRun", "secScore"].forEach((id) => io.observe($(id)));
 }
 
-/* ── 처리 단계 띠 ── */
+/* ── 작업대 레일: 01 입력 · 02 처리 · 03 악보 편집의 실제 상태 ── */
+const STEP_WORD = { idle: "□ 대기", active: "● 지금 할 일", running: "■ 진행 중", done: "■ 완료", failed: "○ 실패" };
+function setStep(id, state, text) {
+  const sec = $({ input: "secInput", run: "secRun", score: "secScore" }[id]);
+  sec.dataset.state = state;
+  const el = $({ input: "stInput", run: "stRun", score: "stScore" }[id]);
+  el.innerHTML = `<b>${STEP_WORD[state]}</b> `;
+  el.append(text || "");
+}
+
+/* ── 처리 단계 ── */
 const SYM = { WAITING: "□", RUNNING: "■", DONE: "■", FAILED: "○" };
+const ST_KO = { WAITING: "대기", RUNNING: "진행 중", DONE: "완료", FAILED: "실패" };
 let runTimer = null;
 function stage(key, st, time) {
   const li = document.querySelector(`.stage[data-key="${key}"]`);
   li.dataset.st = st;
-  li.querySelector(".st b").textContent = `${SYM[st]} ${st}`;
+  li.querySelector(".st b").textContent = `${SYM[st]} ${ST_KO[st]}`;
   if (time !== undefined) li.querySelector(".t").textContent = time;
   const en = li.querySelector(".en").textContent, ko = li.querySelector(".ko").textContent;
   li.setAttribute("aria-label", `${en} ${ko} · ${st} · ${li.querySelector(".t").textContent}`);
@@ -74,14 +90,14 @@ function stage(key, st, time) {
 function runState(word, cls) {
   const el = $("runState");
   el.textContent = word;
-  el.className = "state " + (cls || "");
+  el.className = "sr state " + (cls || ""); // 화면에는 단계 표식이 보여 주고, 이 값은 읽기용으로만 둔다
 }
 function resetBand() {
   ["prepare", "pitch", "segment", "rhythm"].forEach((k) => stage(k, "WAITING", "--"));
   runState("IDLE");
   const r = $("runResult");
-  r.className = "band-result";
-  r.innerHTML = 'RESULT <span class="ko">— 변환하면 결과 요약이 여기 나옵니다</span>';
+  r.className = "run-result";
+  r.innerHTML = '<span class="ko">변환하면 결과 요약이 여기 나옵니다</span>';
 }
 const fmt = (s) => `${s.toFixed(1)}S`;
 function startServerStages() {
@@ -119,7 +135,8 @@ async function toggleRec() {
     const mime = await recorder.start();
     btn.setAttribute("aria-pressed", "true");
     btn.querySelector(".ko").textContent = "녹음 멈추기";
-    $("micState").textContent = `MIC · ● 녹음 중 · ${mime || "기본 형식"}`;
+    $("micState").textContent = `● 녹음 중 (${mime || "기본 형식"})`;
+    setStep("input", "active", "녹음 중이에요. 다시 누르면 멈추고 바로 변환해요");
     const t0 = performance.now();
     recTimer = setInterval(() => {
       const s = (performance.now() - t0) / 1000;
@@ -129,7 +146,8 @@ async function toggleRec() {
   } catch {
     recorder = null;
     message(MSG_MIC, true);
-    $("micState").textContent = "MIC · ○ 권한 없음";
+    $("micState").textContent = "○ 마이크 권한 없음";
+    setStep("input", "failed", "마이크를 쓸 수 없어요. 파일 올리기는 그대로 쓸 수 있어요");
   }
 }
 
@@ -142,7 +160,7 @@ async function stopRec() {
   const btn = $("btnRec");
   btn.setAttribute("aria-pressed", "false");
   btn.querySelector(".ko").textContent = "녹음 시작";
-  $("micState").textContent = "MIC · 대기";
+  $("micState").textContent = "마이크 대기";
   await handleAudio(await blob.arrayBuffer(), { name: "브라우저 녹음", type: blob.type || "audio/webm" });
 }
 
@@ -161,6 +179,8 @@ async function handleAudio(arrayBuffer, info) {
   } catch {
     stage("prepare", "FAILED", `소요 ${fmt((performance.now() - t0) / 1000)}`);
     runState("FAILED", "failed");
+    setStep("input", "failed", "이 파일은 읽을 수 없어요. wav, mp3, m4a로 다시 올려 주세요");
+    setStep("run", "idle", "입력을 기다려요");
     message(MSG_DECODE, true);
     S.busy = false;
     return;
@@ -174,6 +194,8 @@ async function handleAudio(arrayBuffer, info) {
     stage("prepare", "FAILED", `소요 ${fmt((performance.now() - t0) / 1000)}`);
     runState("FAILED", "failed");
     $("srcSent").textContent = "보내지 않음";
+    setStep("input", "failed", `${dec.duration.toFixed(1)}초라 1분이 넘어요. 1분 이내로 잘라 올려 주세요`);
+    setStep("run", "idle", "입력을 기다려요");
     message(MSG_TOO_LONG, true);
     S.busy = false;
     return;
@@ -182,6 +204,7 @@ async function handleAudio(arrayBuffer, info) {
   S.editStart = null; // 새 녹음: 고치는 시간을 처음부터 다시 잰다
   $("srcSent").textContent = `WAV · ${dec.sr} Hz · MONO · ${(S.wav.size / 1024).toFixed(0)} KB`;
   stage("prepare", "DONE", `소요 ${fmt((performance.now() - t0) / 1000)}`);
+  setStep("input", "done", `${info.name}, ${dec.duration.toFixed(1)}초`);
   S.busy = false;
   S.bpmSet = false;
   await transcribe({});
@@ -192,6 +215,7 @@ async function transcribe({ bpm = null, floor = null } = {}) {
   S.busy = true;
   setControls();
   runState("RUNNING", "running");
+  setStep("run", "running", "서버가 음을 찾고 있어요");
   const t0 = startServerStages();
   const fd = new FormData();
   fd.append("audio", S.wav, "melody.wav");
@@ -210,17 +234,19 @@ async function transcribe({ bpm = null, floor = null } = {}) {
     stage("rhythm", tm.rhythm !== undefined ? "DONE" : "WAITING", tm.rhythm !== undefined ? `소요 ${fmt(tm.rhythm)}` : "--");
     const unc = (body.notes || []).filter((n) => n.uncertain).length;
     const res = $("runResult");
-    res.className = "band-result done";
+    res.className = "run-result done";
     if (body.status === "no_notes" || body.status === "too_long") {
       ["segment", "rhythm"].forEach((k) => stage(k, body.status === "no_notes" && k === "segment" ? "DONE" : "WAITING"));
       runState("FAILED", "failed");
-      res.innerHTML = `RESULT · NOTES 0 · 왕복 ${fmt(roundTrip)} <span class="ko">— ${body.message}</span>`;
+      res.innerHTML = `<span class="ko">찾은 음이 없어요. ${body.message}</span>`;
+      setStep("run", "failed", body.message);
       message(body.message, true);
       clearScore();
     } else {
       runState("COMPLETE", "complete");
-      const flow = body.mode === "poly" ? `ALL ${body.all_notes} → MELODY ${body.notes.length}` : `OUT ${body.notes.length}`;
-      res.innerHTML = `RESULT · ${body.mode.toUpperCase()} · IN ${body.duration_sec}S → ${flow} NOTES · UNCERTAIN ${unc} · 서버 ${fmt(tm.total || 0)} · 왕복 ${fmt(roundTrip)}`;
+      const flow = body.mode === "poly" ? `양손 전체 ${body.all_notes}음 중 멜로디 ${body.notes.length}음을 골랐어요` : `멜로디 ${body.notes.length}음을 찾았어요`;
+      res.innerHTML = `<span class="ko">${Number(body.duration_sec).toFixed(1)}초 녹음, ${flow}. 불확실한 음 ${unc}개, 처리 ${roundTrip.toFixed(1)}초</span>`;
+      setStep("run", "done", `${roundTrip.toFixed(1)}초 만에 끝났어요`);
       message(body.status === "uncertain" ? body.message : MSG_EDIT, false);
       loadResult(body, !!bpm);
       $("secScore").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -229,6 +255,7 @@ async function transcribe({ bpm = null, floor = null } = {}) {
     clearInterval(runTimer);
     ["pitch", "segment", "rhythm"].forEach((k) => stage(k, "FAILED"));
     runState("FAILED", "failed");
+    setStep("run", "failed", e.message === "Failed to fetch" ? "서버에 닿지 않아요. 터미널에서 서버를 켜 주세요" : "변환하지 못했어요");
     message(e.message === "Failed to fetch" ? "서버에 닿지 않아요. 터미널에서 서버가 켜져 있는지 확인해 주세요" : e.message, true);
   } finally {
     S.busy = false;
@@ -263,7 +290,8 @@ function clearScore() {
   S.result = null; S.notes = []; S.original = new Map(); S.selectedId = null; S.history = [];
   ["roKey", "roTempo", "roNotes", "roFloor", "roUnc", "roEdited"].forEach((id) => ($(id).textContent = "-"));
   $("score").innerHTML = "";
-  $("score").appendChild(scoreEmpty);
+  document.body.classList.remove("has-result");
+  setStep("score", "idle", "변환이 끝나면 열려요");
   updateSelPanel();
   setControls();
 }
@@ -289,28 +317,30 @@ function setRo(id, html) {
 }
 
 function refresh() {
+  // 결과 영역을 먼저 보이게 해야 악보 폭을 잴 수 있다
+  document.body.classList.add("has-result");
   const total = S.original.size;
   const keyKo = S.key.endsWith("m") ? `${S.key.slice(0, -1)} <span class="ko">단조</span>` : `${S.key} <span class="ko">장조</span>`;
   setRo("roKey", keyKo);
   $("timeSel").value = `${S.timeSig.num}/${S.timeSig.den}`;
   setRo("roTempo", `${Math.round(S.bpm)}<small>BPM</small>`);
-  $("tempoTag").textContent = S.bpmSet ? "■ SET" : "≈ EST";
+  $("tempoTag").textContent = S.bpmSet ? "■ 직접" : "≈ 추정";
   $("tempoTag").title = S.bpmSet ? "직접 정한 템포" : "음 시작점으로 추정한 템포";
   setRo("roNotes", `${S.notes.length}`);
   const poly = S.result?.mode === "poly";
   setRo("roFloor", !poly ? "-" : S.floor === null ? '<span class="ko">없음</span>' : noteName(S.floor, "C"));
   $("floorTag").hidden = !poly;
-  $("floorTag").textContent = S.floorAuto ? "≈ AUTO" : "■ SET";
+  $("floorTag").textContent = S.floorAuto ? "≈ 자동" : "■ 직접";
   $("floorTag").title = S.floorAuto ? "왼손·오른손 음높이 무리의 경계로 자동으로 정함" : "직접 정한 최저음";
   setRo("roUnc", `${S.notes.filter((n) => n.uncertain).length}`);
   const ed = editedCount();
   setRo("roEdited", `${ed}<small>/ ${total} · ${total ? Math.round((ed / total) * 100) : 0}%</small>`);
+  setStep("score", "active", ed ? `고친 음 ${ed}개. 다 고쳤으면 MIDI로 내보내요` : "틀린 음을 눌러 고치고 MIDI로 내보내요");
   drawScore();
   updateSelPanel();
   setControls();
 }
 
-const scoreEmpty = $("scoreEmpty");
 function drawScore() {
   try {
     render($("score"), { notes: S.notes, key: S.key, selectedId: S.selectedId, timeSig: S.timeSig }, (id) => {
@@ -547,8 +577,11 @@ function setMode(mode) {
   else setControls();
 }
 function setStageLabels() {
+  document.body.classList.toggle("mode-mono", S.mode === "mono");
   for (const k of ["pitch", "segment"]) {
-    document.querySelector(`.stage[data-key="${k}"] .ko`).textContent = STAGE_KO[S.mode][k];
+    const li = document.querySelector(`.stage[data-key="${k}"]`);
+    li.querySelector(".ko").textContent = STAGE_KO[S.mode][k][0];
+    li.querySelector(".desc").textContent = STAGE_KO[S.mode][k][1];
   }
 }
 function fillFloorOptions() {
@@ -645,6 +678,16 @@ const plateObserver = new ResizeObserver(onPlateResize);
 plateObserver.observe(document.querySelector(".plate"));
 window.addEventListener("resize", onPlateResize);
 
+// 좁은 화면: 핵심 정보 네 개 밖의 항목은 접어 둔다
+$("btnMoreInfo").addEventListener("click", (e) => {
+  const open = $("readouts").classList.toggle("open");
+  e.currentTarget.setAttribute("aria-expanded", String(open));
+  e.currentTarget.textContent = open ? "정보 접기" : "정보 더 보기";
+});
+
+setStep("input", "active", "녹음 종류를 고르고 녹음하거나 파일을 올려요");
+setStep("run", "idle", "입력을 기다려요");
+setStep("score", "idle", "변환이 끝나면 열려요");
 fillFloorOptions();
 fillPickupOptions();
 setStageLabels();

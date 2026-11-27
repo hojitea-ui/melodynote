@@ -6,12 +6,11 @@
 <title>멜로디노트</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;600;700&display=swap">
 <link rel="stylesheet" href="/static/style.css">
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
 </head>
 <body>
-<div class="edge" aria-hidden="true"><i></i><i></i><i></i></div>
 
 <header class="status">
   <div class="wrap">
@@ -23,179 +22,174 @@
 </header>
 
 <main class="wrap">
-  <section class="cover" aria-labelledby="title">
-    <div>
-      <p class="code"><span class="no">[00]</span>/ MELODY TO SCORE</p>
-      <h1 id="title">녹음한 멜로디를 악보로</h1>
-      <p class="sub">흥얼거린 모티브를 오선지 위의 음으로</p>
-    </div>
-    <div>
-      <p class="lead">피아노 양손으로 치거나 허밍한 모티브를 녹음하면 멜로디를 골라 악보로 그립니다. 틀린 음은 눌러서 고치고, MIDI로 내보내 곡 작업에 씁니다.</p>
-      <div class="tag-row">
-        <span class="tag">POLY → MELODY</span><span class="tag">≤ 1:00</span><span class="tag">BASIC-PITCH · PYIN</span><span class="tag">MIDI EXPORT</span>
-      </div>
-    </div>
+
+  <section class="intro" aria-labelledby="title">
+    <h1 id="title">녹음한 멜로디를 악보로</h1>
+    <p class="lead">피아노 양손이나 허밍으로 녹음한 모티브에서 멜로디를 골라 오선지에 그리고, 고쳐서 MIDI로 내보냅니다.</p>
   </section>
 
-  <!-- [01] 입력 -->
-  <section class="sec" id="secInput" aria-labelledby="h-input">
-    <div class="sec-head">
-      <span class="idx" aria-hidden="true">01</span>
-      <div>
-        <p class="code"><span class="no">[01]</span>/ INPUT</p>
-        <h2 id="h-input">녹음하기</h2>
-      </div>
-      <p class="hint">피아노 양손도, 허밍도 됩니다. 1분이 되면 녹음이 저절로 멈춥니다.</p>
-    </div>
-
+  <div class="bench">
+  <!-- 01 입력 -->
+  <section class="step" id="secInput" data-state="active" aria-labelledby="h-input">
+    <div class="step-mark" aria-hidden="true"><span>01</span></div>
+    <div class="step-body">
+    <div class="step-head"><h2 id="h-input">입력</h2><p class="step-state" id="stInput"></p></div>
     <div class="input-grid">
-      <div class="card">
-        <div class="tab-row"><span class="tab">Record</span><span class="code" id="micState">MIC · 대기</span></div>
-        <div class="rec-clock mono" id="recClock" aria-live="off">00:00<small> / 01:00</small></div>
-        <div class="meter-bar" aria-hidden="true"><i id="level"></i></div>
-        <div class="ctl-row">
-          <button class="btn rec" id="btnRec" aria-pressed="false"><span class="dot" aria-hidden="true"></span><span>REC</span><span class="ko">녹음 시작</span></button>
-          <span class="sep" aria-hidden="true"></span>
-          <button class="btn" id="btnFile">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V2M4.5 5.5 8 2l3.5 3.5M2 10v4h12v-4"/></svg>
-            <span>FILE</span><span class="ko">파일 올리기</span>
-          </button>
-          <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.flac" hidden>
-        </div>
-        <div class="mode-row">
-          <div class="lbl">MODE · 녹음 종류</div>
-          <div class="seg" id="modeSeg" role="group" aria-label="녹음 종류">
-            <button data-mode="poly" aria-pressed="true"><span>POLY</span><span class="ko">양손·반주 → 멜로디</span></button>
-            <button data-mode="mono" aria-pressed="false"><span>MONO</span><span class="ko">한 줄 (허밍·노래)</span></button>
-          </div>
+    <div class="start panel">
+      <div class="field-block">
+        <p class="label-ko" id="modeLbl">녹음 종류</p>
+        <div class="seg seg-wide" id="modeSeg" role="group" aria-labelledby="modeLbl">
+          <button data-mode="poly" aria-pressed="true"><b>양손·반주</b><span>멜로디만 골라요</span></button>
+          <button data-mode="mono" aria-pressed="false"><b>한 줄</b><span>허밍·노래</span></button>
         </div>
       </div>
 
-      <div class="card">
-        <div class="tab-row"><span class="tab">Source</span><span class="code">입력 기록</span></div>
-        <div id="sourceEmpty" class="empty">
-          <strong>아직 들어온 소리가 없어요</strong>
-          <ol>
-            <li><b>01</b><span>녹음 버튼을 누르고 멜로디를 부르거나 연주하세요</span></li>
-            <li><b>02</b><span>또는 가지고 있는 음성 파일을 올리세요</span></li>
-            <li><b>03</b><span>변환이 끝나면 아래 악보에서 틀린 음을 고칠 수 있어요</span></li>
-          </ol>
-        </div>
-        <dl class="sheet" id="sourceSheet" hidden>
-          <dt>SOURCE</dt><dd id="srcName">-</dd>
-          <dt>LENGTH</dt><dd><span class="mono" id="srcLen">-</span></dd>
-          <dt>FORMAT</dt><dd><span class="mono" id="srcFmt">-</span></dd>
-          <dt>SENT AS</dt><dd><span class="mono" id="srcSent">-</span></dd>
-        </dl>
+      <div class="cta-row">
+        <button class="cta rec" id="btnRec" aria-pressed="false"><span class="dot" aria-hidden="true"></span><span class="ko">녹음 시작</span></button>
+        <button class="cta alt" id="btnFile">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V2M4.5 5.5 8 2l3.5 3.5M2 10v4h12v-4"/></svg>
+          <span>파일 올리기</span>
+        </button>
+        <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.flac" hidden>
       </div>
+
+      <div class="rec-line">
+        <span class="rec-clock mono" id="recClock" aria-live="off">00:00<small> / 01:00</small></span>
+        <span class="meter-bar" aria-hidden="true"><i id="level"></i></span>
+        <span class="mic" id="micState">마이크 대기</span>
+      </div>
+
+      <p class="fine" id="sourceEmpty">녹음은 1분이 되면 저절로 멈춰요.</p>
+      <dl class="sheet" id="sourceSheet" hidden>
+        <dt>입력</dt><dd id="srcName">-</dd>
+        <dt>길이</dt><dd><span class="mono" id="srcLen">-</span></dd>
+        <dt>원본 형식</dt><dd><span class="mono" id="srcFmt">-</span></dd>
+        <dt>보낸 형식</dt><dd><span class="mono" id="srcSent">-</span></dd>
+      </dl>
+    </div>
+    <div class="guide">
+      <p class="label-ko">어떤 녹음이 되나요</p>
+      <dl class="guide-list">
+        <dt>양손·반주</dt><dd>피아노처럼 여러 음이 함께 울리는 녹음. 가장 높은 줄을 멜로디로 골라요.</dd>
+        <dt>한 줄</dt><dd>허밍·노래·단선율 악기. 음높이를 그대로 따라가요.</dd>
+        <dt>길이·형식</dt><dd>1분 이내. 브라우저 녹음이나 wav, mp3, m4a 파일</dd>
+        <dt>처리 위치</dt><dd>이 컴퓨터의 서버. 녹음을 밖으로 보내지 않아요.</dd>
+      </dl>
+    </div>
+    </div>
     </div>
   </section>
-</main>
 
-<!-- 처리 단계 띠 (어두운 바탕 2) -->
-<section class="band" aria-labelledby="h-run">
-  <div class="wrap">
-    <div class="band-head">
-      <span id="h-run">[RUN] / PIPELINE</span><span class="rule"></span>
-      <span class="state" id="runState">IDLE</span>
+  <!-- 02 인식 · 멜로디 · 박자 -->
+  <section class="step" id="secRun" data-state="idle" aria-labelledby="h-run">
+    <div class="step-mark" aria-hidden="true"><span>02</span></div>
+    <div class="step-body">
+    <div class="step-head"><h2 id="h-run">인식 · 멜로디 · 박자</h2><p class="step-state" id="stRun"></p><span class="sr" id="runState">IDLE</span></div>
+    <div class="run panel">
+      <ol class="stages" id="stages">
+        <li class="stage" data-key="prepare" data-st="WAITING">
+          <div class="top"><span class="n">a</span><span class="ko">소리 준비</span><span class="en sr">PREPARE</span></div>
+          <p class="desc">브라우저가 WAV로 바꿔 보내요</p>
+          <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
+        </li>
+        <li class="stage" data-key="pitch" data-st="WAITING">
+          <div class="top"><span class="n">b</span><span class="ko">음 인식</span><span class="en sr">PITCH</span></div>
+          <p class="desc">AI가 울린 음을 찾아요</p>
+          <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
+        </li>
+        <li class="stage" data-key="segment" data-st="WAITING">
+          <div class="top"><span class="n">c</span><span class="ko">멜로디 고르기</span><span class="en sr">SEGMENT</span></div>
+          <p class="desc">가장 높은 줄을 멜로디로</p>
+          <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
+        </li>
+        <li class="stage" data-key="rhythm" data-st="WAITING">
+          <div class="top"><span class="n">d</span><span class="ko">박자 맞추기</span><span class="en sr">RHYTHM</span></div>
+          <p class="desc">템포·박·조성을 정해요</p>
+          <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
+        </li>
+      </ol>
+      <p class="run-result" id="runResult"><span class="ko">변환하면 결과 요약이 여기 나옵니다</span></p>
     </div>
-    <ol class="stages" id="stages">
-      <li class="stage" data-key="prepare" data-st="WAITING">
-        <div class="top"><span>01/04</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h2l2-5 3 10 3-8 2 3h2"/></svg></div>
-        <div class="en">PREPARE</div><div class="ko">소리 준비 · 브라우저</div>
-        <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
-      </li>
-      <li class="stage" data-key="pitch" data-st="WAITING">
-        <div class="top"><span>02/04</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15c2-8 4-8 6 0s4 8 6 0 2-6 2-6"/></svg></div>
-        <div class="en">PITCH</div><div class="ko">음높이 인식</div>
-        <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
-      </li>
-      <li class="stage" data-key="segment" data-st="WAITING">
-        <div class="top"><span>03/04</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h5M10 10h4M15 14h2M8 3v14M14 3v14"/></svg></div>
-        <div class="en">SEGMENT</div><div class="ko">음 나누기</div>
-        <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
-      </li>
-      <li class="stage" data-key="rhythm" data-st="WAITING">
-        <div class="top"><span>04/04</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 4h16M2 8h16M2 12h16M2 16h16M7 4v12M13 4v12"/></svg></div>
-        <div class="en">RHYTHM</div><div class="ko">박자 맞추기</div>
-        <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
-      </li>
-    </ol>
-    <p class="band-result" id="runResult">RESULT <span class="ko">— 변환하면 결과 요약이 여기 나옵니다</span></p>
-  </div>
-</section>
+    </div>
+  </section>
 
-<main class="wrap">
-  <!-- [02] 악보 -->
-  <section class="sec" id="secScore" aria-labelledby="h-score">
-    <div class="sec-head">
-      <span class="idx" aria-hidden="true">02</span>
-      <div>
-        <p class="code"><span class="no">[02]</span>/ SCORE</p>
-        <h2 id="h-score">악보</h2>
+  <!-- 03 악보 편집 -->
+  <section class="step" id="secScore" data-state="idle" aria-labelledby="h-score">
+    <div class="step-mark" aria-hidden="true"><span>03</span></div>
+    <div class="step-body">
+    <div class="step-head"><h2 id="h-score">악보 편집</h2><p class="step-state" id="stScore"></p></div>
+
+    <div class="note-bar" id="msgBar" hidden><span id="msgText"></span></div>
+
+    <!-- 변환 전: 악보가 나타날 자리와 시작 방법 -->
+    <div class="empty-state before-result">
+      <div class="es-main">
+        <div class="es-staff" aria-hidden="true"></div>
+        <p class="es-title">악보는 이 자리에 그려져요</p>
+        <p class="es-text">위 <a href="#secInput">01 입력</a>에서 녹음하거나 파일을 올리면, 몇 초 뒤 멜로디가 오선지로 나타나고 편집 도구가 열려요.</p>
       </div>
-      <p class="hint">틀린 음을 눌러 고치세요. ?는 인식이 불확실한 음입니다.</p>
+      <div class="es-side">
+        <p class="label-ko">열리면 할 수 있는 것</p>
+        <ul class="can">
+          <li>음을 눌러 반음·옥타브·길이 고치기, <kbd>C</kbd>~<kbd>B</kbd>로 음이름 입력</li>
+          <li>빠진 음 추가, 박자표·못갖춘마디·템포 맞추기</li>
+          <li>들어 보기, MIDI 내보내기</li>
+        </ul>
+      </div>
     </div>
+    <p class="hint-line result-only">음을 눌러 고치세요. <b>?</b>는 AI가 불확실하다고 표시한 음입니다.</p>
 
-    <div class="score-wrap">
-      <div class="note-bar" id="msgBar" hidden><span id="msgText"></span></div>
-
-      <div class="readouts" role="group" aria-label="악보 정보">
-        <div class="ro"><div class="k">KEY</div><div class="v" id="roKey">-</div></div>
-        <div class="ro"><div class="k"><label for="timeSel">TIME</label></div><div class="v">
+    <!-- 변환 후 -->
+    <div class="score-wrap result-only">
+      <div class="readouts" id="readouts" role="group" aria-label="악보 정보">
+        <div class="ro"><div class="k">조</div><div class="v" id="roKey">-</div></div>
+        <div class="ro"><div class="k"><label for="timeSel">박자</label></div><div class="v">
           <select class="num sel" id="timeSel" disabled aria-label="박자표">
             <option value="4/4">4/4</option><option value="3/4">3/4</option>
             <option value="2/4">2/4</option><option value="6/8">6/8</option>
           </select></div></div>
-        <div class="ro"><div class="k">TEMPO <span class="tag est" id="tempoTag">≈ EST</span></div><div class="v" id="roTempo">-</div></div>
-        <div class="ro"><div class="k">NOTES</div><div class="v" id="roNotes">-</div></div>
-        <div class="ro"><div class="k">MELODY ≥ <span class="tag est" id="floorTag">≈ AUTO</span></div><div class="v" id="roFloor">-</div></div>
-        <div class="ro"><div class="k">UNCERTAIN ?</div><div class="v" id="roUnc">-</div></div>
-        <div class="ro"><div class="k">EDITED <span class="tag live">LIVE</span></div><div class="v" id="roEdited">-</div></div>
+        <div class="ro"><div class="k">템포 <span class="tag est" id="tempoTag">≈ 추정</span></div><div class="v" id="roTempo">-</div></div>
+        <div class="ro"><div class="k">고친 음 <span class="tag live">실시간</span></div><div class="v" id="roEdited">-</div></div>
+        <div class="ro more"><div class="k">음 수</div><div class="v" id="roNotes">-</div></div>
+        <div class="ro more poly-only"><div class="k">멜로디 최저음 <span class="tag est" id="floorTag">≈ 자동</span></div><div class="v" id="roFloor">-</div></div>
+        <div class="ro more"><div class="k">불확실 ?</div><div class="v" id="roUnc">-</div></div>
+        <button class="ro-toggle" id="btnMoreInfo" aria-expanded="false" aria-controls="readouts">정보 더 보기</button>
       </div>
 
       <div class="plate">
         <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
-        <div id="score" aria-label="악보" role="img">
-          <div class="empty" id="scoreEmpty" style="margin: 16px;">
-            <strong>아직 악보가 없어요</strong>
-            <ol>
-              <li><b>01</b><span>위에서 녹음하거나 파일을 올리세요</span></li>
-              <li><b>02</b><span>변환이 끝나면 여기에 악보가 그려집니다</span></li>
-            </ol>
-          </div>
-        </div>
+        <div id="score" aria-label="악보" role="img"></div>
       </div>
       <div class="plate-foot" id="plateFoot">
-        <span>RENDER VEXFLOW 4.2.5</span><span>·</span><span id="selInfo" class="ko">음을 누르면 선택됩니다</span>
+        <span id="selInfo" class="ko">음을 누르면 선택됩니다</span>
       </div>
 
       <div class="edit-grid">
-        <div class="card">
-          <div class="tab-row"><span class="tab">Note</span><span class="code">선택한 음</span></div>
+        <div class="panel">
+          <div class="panel-head"><h3>선택한 음</h3></div>
           <dl class="sheet">
-            <dt>NOTE</dt><dd><span class="mono" id="selName">-</span></dd>
-            <dt>POSITION</dt><dd><span class="mono" id="selPos">-</span></dd>
-            <dt>LENGTH</dt><dd id="selLen">-</dd>
-            <dt>CONFIDENCE</dt><dd><span class="mono" id="selConf">-</span></dd>
-            <dt>STATE</dt><dd id="selState">-</dd>
+            <dt>음</dt><dd><span class="mono" id="selName">-</span></dd>
+            <dt>위치</dt><dd><span class="mono" id="selPos">-</span></dd>
+            <dt>길이</dt><dd id="selLen">-</dd>
+            <dt>확신도</dt><dd><span class="mono" id="selConf">-</span></dd>
+            <dt>상태</dt><dd id="selState">-</dd>
           </dl>
         </div>
 
-        <div class="card">
-          <div class="tab-row"><span class="tab">Edit</span><span class="code">고치기</span></div>
+        <div class="panel">
+          <div class="panel-head"><h3>고치기</h3></div>
           <div class="edit-ctl">
             <div>
-              <div class="lbl">PITCH · 음높이</div>
+              <p class="label-ko">음높이</p>
               <div class="ctl-row">
-                <button class="btn ed" data-op="up1"><span>▲ 1</span><span class="ko">반음 위</span></button>
-                <button class="btn ed" data-op="down1"><span>▼ 1</span><span class="ko">반음 아래</span></button>
-                <button class="btn ed" data-op="up12"><span>▲ 8VA</span><span class="ko">옥타브 위</span></button>
-                <button class="btn ed" data-op="down12"><span>▼ 8VB</span><span class="ko">옥타브 아래</span></button>
+                <button class="btn ed" data-op="up1"><span class="ko">▲ 반음 위</span></button>
+                <button class="btn ed" data-op="down1"><span class="ko">▼ 반음 아래</span></button>
+                <button class="btn ed" data-op="up12"><span class="ko">▲ 옥타브 위</span></button>
+                <button class="btn ed" data-op="down12"><span class="ko">▼ 옥타브 아래</span></button>
               </div>
             </div>
             <div>
-              <div class="lbl">LENGTH · 길이 (뒤 음들이 함께 밀리거나 당겨집니다)</div>
+              <p class="label-ko">길이 <span class="muted">· 뒤 음들이 함께 밀리거나 당겨져요</span></p>
               <div class="seg" id="durSeg" role="group" aria-label="음 길이">
                 <button class="ed" data-dur="1" aria-pressed="false">16<span class="sr">분음표</span></button>
                 <button class="ed" data-dur="2" aria-pressed="false">8</button>
@@ -208,46 +202,49 @@
               </div>
             </div>
             <div class="ctl-row">
-              <button class="btn ed" data-op="add"><span>+ ADD</span><span class="ko">뒤에 음 추가</span></button>
-              <button class="btn ed" data-op="ok"><span>✓ OK</span><span class="ko">맞는 음</span></button>
-              <button class="btn ed" data-op="del"><span>DEL</span><span class="ko">쉼표로</span></button>
-              <button class="btn" id="btnUndo" disabled><span>UNDO</span><span class="ko">되돌리기</span></button>
+              <button class="btn ed" data-op="add"><span class="ko">+ 뒤에 음 추가</span></button>
+              <button class="btn ed" data-op="ok"><span class="ko">✓ 맞는 음</span></button>
+              <button class="btn ed" data-op="del"><span class="ko">쉼표로</span></button>
+              <button class="btn" id="btnUndo" disabled><span class="ko">되돌리기</span></button>
             </div>
-            <p class="keys"><kbd>C</kbd>~<kbd>B</kbd> 음이름으로 바로 (조표 따름, 가까운 옥타브) · <kbd>←</kbd> <kbd>→</kbd> 음 이동 · <kbd>↑</kbd> <kbd>↓</kbd> 반음 · <kbd>Shift</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> 옥타브 · <kbd>+</kbd> 뒤에 음 추가 · <kbd>Del</kbd> 쉼표로 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기</p>
+            <p class="keys"><kbd>C</kbd>~<kbd>B</kbd> 음이름 · <kbd>←</kbd><kbd>→</kbd> 음 이동 · <kbd>↑</kbd><kbd>↓</kbd> 반음 · <kbd>Shift</kbd>+<kbd>↑</kbd><kbd>↓</kbd> 옥타브 · <kbd>+</kbd> 음 추가 · <kbd>Del</kbd> 쉼표 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기</p>
           </div>
         </div>
       </div>
 
-      <div class="card result actions">
-        <div class="ctl-row">
-          <button class="btn" id="btnPlay" disabled>
+      <div class="panel result actions">
+        <div class="act-group">
+          <button class="btn primary" id="btnPlay" disabled>
             <svg viewBox="0 0 16 16" aria-hidden="true" id="playIcon"><path d="M4 2.5v11l9-5.5z"/></svg>
-            <span id="playLbl">PLAY</span><span class="ko" id="playKo">들어 보기</span>
+            <span id="playLbl" class="sr">PLAY</span><span class="ko" id="playKo">들어 보기</span>
           </button>
-          <span class="sep" aria-hidden="true"></span>
-          <label class="field" for="bpmIn">TEMPO</label>
+          <button class="btn primary" id="btnMidi" disabled>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v9M4.5 7.5 8 11l3.5-3.5M2 14h12"/></svg>
+            <span class="ko">MIDI 내보내기</span>
+          </button>
+        </div>
+        <div class="act-group">
+          <label class="field" for="pickupSel">첫 음 위치</label>
+          <select class="num sel" id="pickupSel" disabled title="못갖춘마디: 첫 음이 마디의 몇 번째 박에서 시작하는지"></select>
+        </div>
+        <div class="act-group">
+          <label class="field" for="bpmIn">템포</label>
           <input class="num" id="bpmIn" type="number" min="30" max="300" step="1" inputmode="numeric" disabled>
           <div class="seg">
             <button id="btnHalf" disabled>×½</button>
             <button id="btnDouble" disabled>×2</button>
           </div>
-          <label class="field" for="pickupSel">PICKUP</label>
-          <select class="num sel" id="pickupSel" disabled title="못갖춘마디: 첫 음이 마디의 몇 번째 박에서 시작하는지"></select>
-          <span class="sep" aria-hidden="true"></span>
-          <label class="field" for="floorSel" id="floorLbl">LOWEST</label>
-          <select class="num sel" id="floorSel" disabled aria-describedby="floorHelp"></select>
-          <button class="btn" id="btnRetempo" disabled><span>RE-FIT</span><span class="ko">다시 맞추기</span></button>
-          <span class="sep" aria-hidden="true"></span>
-          <button class="btn" id="btnMidi" disabled>
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v9M4.5 7.5 8 11l3.5-3.5M2 14h12"/></svg>
-            <span>MIDI</span><span class="ko">내보내기</span>
-          </button>
+          <label class="field poly-only" for="floorSel" id="floorLbl">멜로디 최저음</label>
+          <select class="num sel poly-only" id="floorSel" disabled aria-describedby="floorHelp"></select>
+          <button class="btn" id="btnRetempo" disabled><span class="ko">다시 맞추기</span></button>
         </div>
-        <p class="fine" id="floorHelp" style="margin-top: 8px;">LOWEST: 이 음보다 낮은 음은 멜로디 후보에서 뺍니다 (POLY). 왼손 음이 섞이면 올리고, 멜로디가 잘리면 내리세요. 템포·LOWEST를 바꾼 뒤 다시 맞추기를 누르면 인식은 다시 하지 않아 빠릅니다.</p>
-        <p class="fine" style="margin-top: 4px;">내보낼 때 원래 인식 결과와 고친 결과를 이 컴퓨터의 <span class="mono">data/feedback.jsonl</span>에 남깁니다. 고친 음 비율(목표 20% 이하)을 재는 데 씁니다.</p>
+        <p class="fine" id="floorHelp"><span class="poly-only">멜로디 최저음보다 낮은 음은 멜로디 후보에서 빠져요. 왼손 음이 섞이면 올리고, 멜로디가 잘리면 내리세요. </span>템포·최저음을 바꾸면 고친 내용이 사라지니 먼저 맞추세요.</p>
+        <p class="fine">내보낼 때 원래 결과·고친 결과·걸린 시간을 이 컴퓨터의 <span class="mono">data/feedback.jsonl</span>에 남깁니다.</p>
       </div>
     </div>
+    </div>
   </section>
+  </div>
 </main>
 
 <footer>

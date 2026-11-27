@@ -95,7 +95,7 @@ export function render(el, model, onSelect) {
   const ts = model.timeSig || { num: 4, den: 4 };
   const measures = layout(notes, measureLen(ts));
 
-  const width = Math.max(320, el.clientWidth - 16);
+  const width = Math.max(240, el.clientWidth - 16);
   const ROW_H = 130;
   // 마디 폭: 음 개수에 비례, 줄 첫 마디는 음자리표·조표 자리만큼 더
   const keyAcc = 10 * (KEY_ACC[key] ?? 0) + 6;
