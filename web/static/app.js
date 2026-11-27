@@ -179,6 +179,7 @@ async function handleAudio(arrayBuffer, info) {
     return;
   }
   S.wav = encodeWav(dec.samples, dec.sr);
+  S.editStart = null; // 새 녹음: 고치는 시간을 처음부터 다시 잰다
   $("srcSent").textContent = `WAV · ${dec.sr} Hz · MONO · ${(S.wav.size / 1024).toFixed(0)} KB`;
   stage("prepare", "DONE", `소요 ${fmt((performance.now() - t0) / 1000)}`);
   S.busy = false;
@@ -237,6 +238,8 @@ async function transcribe({ bpm = null, floor = null } = {}) {
 
 /* ── 악보 상태 ── */
 function loadResult(body, bpmSet) {
+  // 이 녹음의 악보가 처음 뜬 순간부터 잰다 (템포·최저음 다시 맞추기도 고치는 시간에 포함)
+  if (S.editStart == null) S.editStart = { perf: performance.now(), iso: new Date().toISOString() };
   S.result = body;
   S.key = body.key;
   S.bpm = body.bpm;
@@ -579,17 +582,20 @@ async function exportMidi() {
     return;
   }
   const ed = editedCount();
+  const editSec = S.editStart ? Math.round((performance.now() - S.editStart.perf) / 1000) : null;
   fetch("/api/feedback", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       duration_sec: S.result?.duration_sec, bpm: S.bpm, bpm_set: S.bpmSet, key: S.key,
       time_signature: `${S.timeSig.num}/${S.timeSig.den}`, mode: S.result?.mode,
+      edit_started_at: S.editStart?.iso, edit_seconds: editSec,
       timings: S.result?.timings, original: S.result?.notes, edited: S.notes,
       edited_count: ed, original_count: S.original.size,
       edited_ratio: S.original.size ? ed / S.original.size : 0,
     }),
   }).catch(() => {});
-  message(`MIDI로 내보냈어요. 고친 음 ${ed} / ${S.original.size}`, false);
+  const took = editSec == null ? "" : ` · 악보가 뜬 뒤 ${Math.floor(editSec / 60)}분 ${editSec % 60}초`;
+  message(`MIDI로 내보냈어요. 고친 음 ${ed} / ${S.original.size}${took}`, false);
 }
 
 /* ── 연결 ── */
