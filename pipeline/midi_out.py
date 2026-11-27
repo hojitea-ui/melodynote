@@ -11,6 +11,12 @@ TICKS_PER_BEAT = 480
 def write_midi(
     qnotes: list[QNote], bpm: float, key: str, path: str, time_sig: tuple[int, int] = (4, 4)
 ) -> None:
+    build_midi(qnotes, bpm, key, time_sig).save(path)
+
+
+def build_midi(
+    qnotes: list[QNote], bpm: float, key: str, time_sig: tuple[int, int] = (4, 4)
+) -> mido.MidiFile:
     mid = mido.MidiFile(ticks_per_beat=TICKS_PER_BEAT)
     tr = mido.MidiTrack()
     mid.tracks.append(tr)
@@ -35,4 +41,4 @@ def write_midi(
         tr.append(msg.copy(time=tick - now))
         now = tick
     tr.append(mido.MetaMessage("end_of_track", time=0))
-    mid.save(path)
+    return mid

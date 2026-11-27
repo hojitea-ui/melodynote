@@ -77,6 +77,8 @@ def transcribe(path: str, bpm: float | None = None) -> tuple[Result, list]:
         {
             "pitch": q.pitch,
             "name": note_name(q.pitch, key),
+            "start16": q.start16,
+            "dur16": q.dur16,
             "start_beat": q.start16 / GRID_PER_BEAT,
             "dur_beat": q.dur16 / GRID_PER_BEAT,
             "start_sec": round(q.start_sec, 3),

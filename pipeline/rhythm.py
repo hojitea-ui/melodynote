@@ -48,7 +48,24 @@ def estimate_tempo(notes: list[Note]) -> float:
         bpm *= 2
     while bpm > BPM_RANGE[1]:
         bpm /= 2
-    return bpm
+    return refine_tempo(bpm, np.array([n.start for n in notes]))
+
+
+def refine_tempo(bpm: float, onsets: np.ndarray, span: float = 0.04, step: float = 0.05) -> float:
+    """대략의 템포 주변(±4%)에서 음 시작점이 16분음표 격자에 가장 잘 맞는 템포를 고른다.
+
+    템포가 1%만 틀려도 8마디면 16분음표 하나 넘게 밀리므로, 자기상관으로 얻은 값을 다듬는다.
+    격자에 대한 위상을 원형 평균으로 재면 위상을 따로 찾지 않아도 된다.
+    """
+    if len(onsets) < 4:
+        return bpm
+    best, best_r = bpm, -1.0
+    for b in np.arange(bpm * (1 - span), bpm * (1 + span), step):
+        grid = 60.0 / b / GRID_PER_BEAT
+        r = abs(np.mean(np.exp(2j * np.pi * onsets / grid)))  # 1이면 모든 시작점이 격자 위
+        if r > best_r:
+            best, best_r = float(b), r
+    return round(best, 1)
 
 
 def _best_phase(onsets: np.ndarray, grid: float) -> float:

@@ -87,11 +87,17 @@ def score(case: Case, res) -> dict:
     gt = gt_onsets(case)
     det = res.notes
     used = set()
-    pitch_ok, dur_ok, matched = 0, 0, 0
+    pitch_ok, dur_ok, pos_ok, matched = 0, 0, 0, 0
+    gt_pos, pos = [], 0
+    for p_, d_ in case.notes:
+        if p_ >= 0:
+            gt_pos.append(pos)
+        pos += d_
+    anchor = None  # 첫 매칭 음 기준으로 박자 위치를 맞춘다
     # 템포가 2배·절반으로 잡히는 건 표기 차이이므로 음가 비교 때 맞춰 준다
     ratio = case.bpm / res.bpm if res.bpm else 1.0
     octave = 2.0 ** round(np.log2(ratio)) if res.bpm else 1.0
-    for t, p, d in gt:
+    for j, (t, p, d) in enumerate(gt):
         cands = [(abs(n["start_sec"] - t), i) for i, n in enumerate(det) if i not in used]
         cands = [c for c in cands if c[0] < 0.08]
         if not cands:
@@ -102,6 +108,10 @@ def score(case: Case, res) -> dict:
         pitch_ok += det[i]["pitch"] == p
         det16 = det[i]["dur_beat"] * 4 * octave
         dur_ok += abs(_ladder(det16) - _ladder(d)) <= 1
+        dpos = det[i]["start_beat"] * 4 * octave
+        if anchor is None:
+            anchor = dpos - gt_pos[j]
+        pos_ok += abs(dpos - anchor - gt_pos[j]) < 0.5
     n = len(gt)
     return {
         "gt_notes": n,
@@ -109,6 +119,7 @@ def score(case: Case, res) -> dict:
         "matched": matched,
         "pitch_acc": pitch_ok / n if n else 0.0,
         "dur_within1": dur_ok / n if n else 0.0,
+        "pos_acc": pos_ok / n if n else 0.0,  # 박자 위치(16분음표 칸)가 맞은 비율
         "bpm_est": res.bpm,
         "bpm_true": case.bpm,
         "time": res.timings.get("total", 0.0),
@@ -153,7 +164,7 @@ def main() -> None:
     tmp = Path(args.save) if args.save else Path(tempfile.mkdtemp())
     tmp.mkdir(parents=True, exist_ok=True)
 
-    print(f"{'case':14} {'len':>5} {'gt':>3} {'det':>3} {'pitch':>6} {'dur±1':>6} {'bpm(est/true)':>14} {'time':>6} | 고정 템포: pitch dur±1")
+    print(f"{'case':14} {'len':>5} {'gt':>3} {'det':>3} {'pitch':>6} {'dur±1':>6} {'pos':>6} {'bpm(est/true)':>14} {'time':>6} | 고정 템포: pitch dur±1 pos")
     for case in CASES:
         y = synth(case)
         wav = tmp / f"{case.name}.wav"
@@ -164,8 +175,8 @@ def main() -> None:
         sf_ = score(case, res_fixed)
         print(
             f"{case.name:14} {len(y)/SR:5.1f} {s['gt_notes']:3d} {s['detected']:3d} "
-            f"{s['pitch_acc']:6.0%} {s['dur_within1']:6.0%} {s['bpm_est']:7.1f}/{s['bpm_true']:<6.0f} "
-            f"{s['time']:6.2f} | {sf_['pitch_acc']:6.0%} {sf_['dur_within1']:6.0%}"
+            f"{s['pitch_acc']:6.0%} {s['dur_within1']:6.0%} {s['pos_acc']:6.0%} {s['bpm_est']:7.1f}/{s['bpm_true']:<6.0f} "
+            f"{s['time']:6.2f} | {sf_['pitch_acc']:6.0%} {sf_['dur_within1']:6.0%} {sf_['pos_acc']:6.0%}"
         )
 
     # 오류 대응 확인: 무음, 잡음, 화음
