@@ -1,4 +1,4 @@
-"""사용법: python -m pipeline 녹음.wav [-o out] [--bpm 90]
+"""사용법: python -m pipeline 녹음.wav [-o out] [--bpm 90] [--mode poly|mono] [--floor 55]
 
 결과로 <이름>.json(악보 데이터·처리 시간)과 <이름>.mid를 만든다.
 """
@@ -18,9 +18,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("audio", help="음성 파일 (wav, mp3, m4a 등)")
     ap.add_argument("-o", "--out", default="out", help="출력 폴더 (기본: out)")
     ap.add_argument("--bpm", type=float, default=None, help="템포를 직접 지정 (기본: 자동 추정)")
+    ap.add_argument("--mode", choices=["poly", "mono"], default="poly",
+                    help="poly: 양손·반주가 있어도 멜로디를 고름(기본) / mono: 한 줄(허밍·노래)")
+    ap.add_argument("--floor", type=int, default=None,
+                    help="poly: 멜로디로 볼 가장 낮은 음, MIDI 번호 (기본: 자동, 예: 55=G3)")
     args = ap.parse_args(argv)
 
-    res, qnotes = transcribe(args.audio, bpm=args.bpm)
+    res, qnotes = transcribe(args.audio, bpm=args.bpm, mode=args.mode, floor=args.floor)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     stem = Path(args.audio).stem
@@ -31,7 +35,10 @@ def main(argv: list[str] | None = None) -> int:
         write_midi(qnotes, res.bpm, res.key, str(out / f"{stem}.mid"))
 
     print(f"상태: {res.status}" + (f" ({res.message})" if res.message else ""))
-    print(f"길이 {res.duration_sec}s · 템포 {res.bpm} · {res.time_signature} · 조 {res.key} · 음 {len(res.notes)}개")
+    print(f"방식 {res.mode} · 길이 {res.duration_sec}s · 템포 {res.bpm} · {res.time_signature} · 조 {res.key} · 음 {len(res.notes)}개")
+    if res.mode == "poly":
+        fl = res.melody_floor
+        print(f"전체 {res.all_notes}음 중 멜로디 · 최저음 {fl if fl is not None else '없음'}{' (자동)' if res.floor_auto else ''}")
     if res.notes:
         print("음: " + " ".join(n["name"] + ("?" if n["uncertain"] else "") for n in res.notes))
     print("처리 시간(초): " + ", ".join(f"{k} {v}" for k, v in res.timings.items()))

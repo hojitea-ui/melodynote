@@ -12,11 +12,17 @@ const REASON_KO = {
   between_pitches: "두 음 사이 음높이",
   unstable_pitch: "음높이가 많이 흔들림",
   missing_fundamental: "화음·여러 소리 의심",
+  isolated_leap: "앞뒤 음과 동떨어진 높이 · 반주 음 의심",
+};
+const STAGE_KO = {
+  poly: { pitch: "음 인식 · 다성", segment: "멜로디 고르기" },
+  mono: { pitch: "음높이 인식", segment: "음 나누기" },
 };
 
 const S = {
   wav: null, result: null, original: new Map(), notes: [], key: "C", bpm: 120, bpmSet: false,
   selectedId: null, history: [], busy: false,
+  mode: "poly", floor: null, floorAuto: true,
 };
 const player = new Player();
 
@@ -176,10 +182,10 @@ async function handleAudio(arrayBuffer, info) {
   stage("prepare", "DONE", `소요 ${fmt((performance.now() - t0) / 1000)}`);
   S.busy = false;
   S.bpmSet = false;
-  await transcribe(null);
+  await transcribe({});
 }
 
-async function transcribe(bpm) {
+async function transcribe({ bpm = null, floor = null } = {}) {
   if (!S.wav || S.busy) return;
   S.busy = true;
   setControls();
@@ -187,7 +193,9 @@ async function transcribe(bpm) {
   const t0 = startServerStages();
   const fd = new FormData();
   fd.append("audio", S.wav, "melody.wav");
+  fd.append("mode", S.mode);
   if (bpm) fd.append("bpm", String(bpm));
+  if (floor !== null && S.mode === "poly") fd.append("floor", String(floor));
   try {
     const r = await fetch("/api/transcribe", { method: "POST", body: fd });
     const body = await r.json().catch(() => ({}));
@@ -209,7 +217,8 @@ async function transcribe(bpm) {
       clearScore();
     } else {
       runState("COMPLETE", "complete");
-      res.innerHTML = `RESULT · IN ${body.duration_sec}S → OUT ${body.notes.length} NOTES · UNCERTAIN ${unc} · 서버 ${fmt(tm.total || 0)} · 왕복 ${fmt(roundTrip)}`;
+      const flow = body.mode === "poly" ? `ALL ${body.all_notes} → MELODY ${body.notes.length}` : `OUT ${body.notes.length}`;
+      res.innerHTML = `RESULT · ${body.mode.toUpperCase()} · IN ${body.duration_sec}S → ${flow} NOTES · UNCERTAIN ${unc} · 서버 ${fmt(tm.total || 0)} · 왕복 ${fmt(roundTrip)}`;
       message(body.status === "uncertain" ? body.message : MSG_EDIT, false);
       loadResult(body, !!bpm);
       $("secScore").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -238,13 +247,16 @@ function loadResult(body, bpmSet) {
   S.original = new Map(S.notes.map((n) => [n.id, { pitch: n.pitch, dur16: n.dur16 }]));
   S.history = [];
   S.selectedId = S.notes.find((n) => n.uncertain)?.id ?? S.notes[0]?.id ?? null;
+  S.floor = body.melody_floor ?? null;
+  S.floorAuto = body.floor_auto !== false;
   $("bpmIn").value = Math.round(S.bpm);
+  $("floorSel").value = S.floorAuto ? "auto" : String(S.floor);
   refresh();
 }
 
 function clearScore() {
   S.result = null; S.notes = []; S.original = new Map(); S.selectedId = null; S.history = [];
-  ["roKey", "roTime", "roTempo", "roNotes", "roUnc", "roEdited"].forEach((id) => ($(id).textContent = "-"));
+  ["roKey", "roTime", "roTempo", "roNotes", "roFloor", "roUnc", "roEdited"].forEach((id) => ($(id).textContent = "-"));
   $("score").innerHTML = "";
   $("score").appendChild(scoreEmpty);
   updateSelPanel();
@@ -279,6 +291,11 @@ function refresh() {
   $("tempoTag").textContent = S.bpmSet ? "■ SET" : "≈ EST";
   $("tempoTag").title = S.bpmSet ? "직접 정한 템포" : "음 시작점으로 추정한 템포";
   setRo("roNotes", `${S.notes.length}`);
+  const poly = S.result?.mode === "poly";
+  setRo("roFloor", !poly ? "-" : S.floor === null ? '<span class="ko">없음</span>' : noteName(S.floor, "C"));
+  $("floorTag").hidden = !poly;
+  $("floorTag").textContent = S.floorAuto ? "≈ AUTO" : "■ SET";
+  $("floorTag").title = S.floorAuto ? "왼손·오른손 음높이 무리의 경계로 자동으로 정함" : "직접 정한 최저음";
   setRo("roUnc", `${S.notes.filter((n) => n.uncertain).length}`);
   const ed = editedCount();
   setRo("roEdited", `${ed}<small>/ ${total} · ${total ? Math.round((ed / total) * 100) : 0}%</small>`);
@@ -330,6 +347,8 @@ function setControls() {
   $("btnPlay").disabled = !has;
   $("btnMidi").disabled = !has || S.busy;
   ["bpmIn", "btnHalf", "btnDouble", "btnRetempo"].forEach((id) => ($(id).disabled = !S.wav || S.busy || !S.result));
+  $("floorSel").disabled = !S.wav || S.busy || !S.result || S.mode !== "poly";
+  document.querySelectorAll("#modeSeg button").forEach((b) => (b.disabled = S.busy || !!recorder));
   $("btnRec").disabled = S.busy && !recorder;
   $("btnFile").disabled = S.busy || !!recorder;
 }
@@ -411,13 +430,45 @@ function stopPlay() {
   $("playIcon").innerHTML = '<path d="M4 2.5v11l9-5.5z"/>';
 }
 
-/* ── 템포 ── */
+/* ── 템포·최저음 다시 맞추기 ── */
 function retempo() {
   const bpm = Number($("bpmIn").value);
   if (!(bpm >= 30 && bpm <= 300)) { message("템포는 30~300 사이로 정해 주세요", true); return; }
-  if (editedCount() > 0 && !confirm("템포를 다시 맞추면 고친 내용이 사라져요. 계속할까요?")) return;
+  if (editedCount() > 0 && !confirm("다시 맞추면 고친 내용이 사라져요. 계속할까요?")) {
+    $("floorSel").value = S.floorAuto ? "auto" : String(S.floor);
+    return;
+  }
   stopPlay();
-  transcribe(bpm);
+  // 템포를 건드리지 않았으면 자동 추정을 유지한다 (최저음만 바꾼 경우)
+  const sendBpm = S.bpmSet || bpm !== Math.round(S.bpm) ? bpm : null;
+  const v = $("floorSel").value;
+  transcribe({ bpm: sendBpm, floor: v === "auto" ? null : Number(v) });
+}
+
+/* ── 녹음 종류 ── */
+function setMode(mode) {
+  if (mode === S.mode || S.busy) return;
+  if (S.result && editedCount() > 0 && !confirm("녹음 종류를 바꾸면 다시 변환해서 고친 내용이 사라져요. 계속할까요?")) return;
+  S.mode = mode;
+  document.querySelectorAll("#modeSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+  setStageLabels();
+  if (S.wav) { stopPlay(); S.bpmSet = false; transcribe({}); }
+  else setControls();
+}
+function setStageLabels() {
+  for (const k of ["pitch", "segment"]) {
+    document.querySelector(`.stage[data-key="${k}"] .ko`).textContent = STAGE_KO[S.mode][k];
+  }
+}
+function fillFloorOptions() {
+  const sel = $("floorSel");
+  sel.innerHTML = '<option value="auto">자동</option>';
+  for (let p = 36; p <= 72; p++) {
+    const o = document.createElement("option");
+    o.value = String(p);
+    o.textContent = noteName(p, "C");
+    sel.appendChild(o);
+  }
 }
 
 /* ── MIDI 내보내기 + 피드백 기록 ── */
@@ -467,6 +518,8 @@ $("btnPlay").addEventListener("click", togglePlay);
 $("btnHalf").addEventListener("click", () => { $("bpmIn").value = Math.round(Number($("bpmIn").value || S.bpm) / 2); });
 $("btnDouble").addEventListener("click", () => { $("bpmIn").value = Math.round(Number($("bpmIn").value || S.bpm) * 2); });
 $("btnRetempo").addEventListener("click", retempo);
+$("floorSel").addEventListener("change", retempo);
+document.querySelectorAll("#modeSeg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
 $("bpmIn").addEventListener("keydown", (e) => { if (e.key === "Enter") retempo(); });
 $("btnMidi").addEventListener("click", exportMidi);
 
@@ -493,6 +546,8 @@ const plateObserver = new ResizeObserver(onPlateResize);
 plateObserver.observe(document.querySelector(".plate"));
 window.addEventListener("resize", onPlateResize);
 
+fillFloorOptions();
+setStageLabels();
 resetBand();
 setControls();
 checkServer();

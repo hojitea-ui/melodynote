@@ -31,8 +31,23 @@ class PitchTrack:
 
 
 def load_audio(path: str, sr: int = SR) -> tuple[np.ndarray, int]:
-    y, sr = librosa.load(path, sr=sr, mono=True)
+    try:
+        y, sr = librosa.load(path, sr=sr, mono=True)
+    except Exception:
+        # m4a·aac 등 libsndfile이 못 읽는 형식은 PyAV(자체 ffmpeg 포함)로 푼다
+        y = _load_with_av(path, sr)
     return y, sr
+
+
+def _load_with_av(path: str, sr: int) -> np.ndarray:
+    import av
+
+    with av.open(path) as c:
+        st = c.streams.audio[0]
+        res = av.AudioResampler(format="flt", layout="mono", rate=sr)
+        chunks = [o.to_ndarray().reshape(-1) for fr in c.decode(st) for o in res.resample(fr)]
+        chunks += [o.to_ndarray().reshape(-1) for o in res.resample(None)]
+    return np.concatenate(chunks).astype(np.float32) if chunks else np.zeros(0, np.float32)
 
 
 def track_pitch(y: np.ndarray, sr: int = SR, hop: int = HOP) -> PitchTrack:

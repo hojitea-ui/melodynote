@@ -30,9 +30,9 @@
       <p class="sub">흥얼거린 모티브를 오선지 위의 음으로</p>
     </div>
     <div>
-      <p class="lead">멜로디 하나를 녹음하거나 파일을 올리면 음높이와 박자를 읽어 악보로 그립니다. 틀린 음은 눌러서 고치고, MIDI로 내보내 곡 작업에 씁니다.</p>
+      <p class="lead">피아노 양손으로 치거나 허밍한 모티브를 녹음하면 멜로디를 골라 악보로 그립니다. 틀린 음은 눌러서 고치고, MIDI로 내보내 곡 작업에 씁니다.</p>
       <div class="tag-row">
-        <span class="tag">단선율</span><span class="tag">≤ 1:00</span><span class="tag">PYIN</span><span class="tag">MIDI EXPORT</span>
+        <span class="tag">POLY → MELODY</span><span class="tag">≤ 1:00</span><span class="tag">BASIC-PITCH · PYIN</span><span class="tag">MIDI EXPORT</span>
       </div>
     </div>
   </section>
@@ -45,7 +45,7 @@
         <p class="code"><span class="no">[01]</span>/ INPUT</p>
         <h2 id="h-input">녹음하기</h2>
       </div>
-      <p class="hint">조용한 곳에서 멜로디 하나만. 1분이 되면 녹음이 저절로 멈춥니다.</p>
+      <p class="hint">피아노 양손도, 허밍도 됩니다. 1분이 되면 녹음이 저절로 멈춥니다.</p>
     </div>
 
     <div class="input-grid">
@@ -61,6 +61,13 @@
             <span>FILE</span><span class="ko">파일 올리기</span>
           </button>
           <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.flac" hidden>
+        </div>
+        <div class="mode-row">
+          <div class="lbl">MODE · 녹음 종류</div>
+          <div class="seg" id="modeSeg" role="group" aria-label="녹음 종류">
+            <button data-mode="poly" aria-pressed="true"><span>POLY</span><span class="ko">양손·반주 → 멜로디</span></button>
+            <button data-mode="mono" aria-pressed="false"><span>MONO</span><span class="ko">한 줄 (허밍·노래)</span></button>
+          </div>
         </div>
       </div>
 
@@ -138,6 +145,7 @@
         <div class="ro"><div class="k">TIME</div><div class="v" id="roTime">-</div></div>
         <div class="ro"><div class="k">TEMPO <span class="tag est" id="tempoTag">≈ EST</span></div><div class="v" id="roTempo">-</div></div>
         <div class="ro"><div class="k">NOTES</div><div class="v" id="roNotes">-</div></div>
+        <div class="ro"><div class="k">MELODY ≥ <span class="tag est" id="floorTag">≈ AUTO</span></div><div class="v" id="roFloor">-</div></div>
         <div class="ro"><div class="k">UNCERTAIN ?</div><div class="v" id="roUnc">-</div></div>
         <div class="ro"><div class="k">EDITED <span class="tag live">LIVE</span></div><div class="v" id="roEdited">-</div></div>
       </div>
@@ -218,14 +226,17 @@
             <button id="btnHalf" disabled>×½</button>
             <button id="btnDouble" disabled>×2</button>
           </div>
-          <button class="btn" id="btnRetempo" disabled><span>RE-FIT</span><span class="ko">이 템포로 다시 맞추기</span></button>
+          <label class="field" for="floorSel" id="floorLbl">LOWEST</label>
+          <select class="num sel" id="floorSel" disabled aria-describedby="floorHelp"></select>
+          <button class="btn" id="btnRetempo" disabled><span>RE-FIT</span><span class="ko">다시 맞추기</span></button>
           <span class="sep" aria-hidden="true"></span>
           <button class="btn" id="btnMidi" disabled>
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v9M4.5 7.5 8 11l3.5-3.5M2 14h12"/></svg>
             <span>MIDI</span><span class="ko">내보내기</span>
           </button>
         </div>
-        <p class="fine" style="margin-top: 8px;">내보낼 때 원래 인식 결과와 고친 결과를 이 컴퓨터의 <span class="mono">data/feedback.jsonl</span>에 남깁니다. 고친 음 비율(목표 20% 이하)을 재는 데 씁니다.</p>
+        <p class="fine" id="floorHelp" style="margin-top: 8px;">LOWEST: 이 음보다 낮은 음은 멜로디 후보에서 뺍니다 (POLY). 왼손 음이 섞이면 올리고, 멜로디가 잘리면 내리세요. 템포·LOWEST를 바꾼 뒤 다시 맞추기를 누르면 인식은 다시 하지 않아 빠릅니다.</p>
+        <p class="fine" style="margin-top: 4px;">내보낼 때 원래 인식 결과와 고친 결과를 이 컴퓨터의 <span class="mono">data/feedback.jsonl</span>에 남깁니다. 고친 음 비율(목표 20% 이하)을 재는 데 씁니다.</p>
       </div>
     </div>
   </section>

@@ -1,12 +1,26 @@
 # 멜로디노트
 
-녹음한 멜로디(단선율)를 오선지 위의 음으로 바꾸는 웹앱. 기획은 [docs/PRD.md](docs/PRD.md). 로컬에서만 쓴다 (배포 안 함).
+녹음한 모티브(피아노 양손 또는 허밍)에서 멜로디를 골라 오선지 위의 음으로 바꾸는 웹앱. 로컬에서만 쓴다 (배포 안 함).
+
+| 문서 | 내용 |
+|---|---|
+| [docs/PRD.md](docs/PRD.md) | 기획 |
+| [docs/wizard-of-oz.md](docs/wizard-of-oz.md) | 오즈의 마법사 테스트 계획 |
+| [docs/sequence.md](docs/sequence.md) | 시퀀스 다이어그램 |
+| [docs/architecture.md](docs/architecture.md) | 아키텍처 다이어그램 |
+| [docs/data-model.md](docs/data-model.md) | 데이터 모델 |
 
 ## 바로 쓰기 (웹 화면)
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+basic-pitch는 TensorFlow를 끌고 오지 않도록 따로 설치한다 (ONNX로 돈다):
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --no-deps basic-pitch
 ```
 
 ```powershell
@@ -18,6 +32,8 @@ python -m venv .venv
 | 화면 | 하는 일 |
 |---|---|
 | [01] 녹음하기 | 마이크 녹음(1분이 되면 자동 정지) 또는 파일 올리기. 브라우저가 22.05kHz 모노 WAV로 바꿔 서버에 보낸다 |
+| MODE | **POLY**(기본): 양손·반주 → 다성 인식(basic-pitch) 후 가장 높은 줄을 멜로디로 / **MONO**: 허밍·노래 한 줄(pYIN) |
+| LOWEST (POLY) | 멜로디로 볼 가장 낮은 음. 자동이면 왼손·오른손 음높이 경계. 바꾸면 인식 결과를 재사용해 1초 안에 다시 맞춘다 |
 | 처리 단계 띠 | PREPARE → PITCH → SEGMENT → RHYTHM. 단계별 소요 시간은 서버가 잰 실제 값 |
 | [02] 악보 | 조·박자·템포, 불확실한 음(?), 고친 음 비율(목표 20% 이하)을 보여 준다 |
 | 고치기 | 음 누르기 → 반음·옥타브 올리고 내리기, 길이 바꾸기(뒤 음이 함께 밀림), 쉼표로, 되돌리기. 키보드: ← → ↑ ↓, Shift+↑↓, Del, Ctrl+Z |
@@ -33,6 +49,7 @@ MIDI를 내보낼 때 원래 인식 결과와 고친 결과를 `data/feedback.js
 |---|---|
 | `pipeline/pitch.py` | librosa pYIN으로 프레임별 음높이, 무음 구간 제거, 전체 음정 치우침 측정 |
 | `pipeline/segment.py` | 음높이 변화·소리 세기의 골로 음을 나눔, 불확실한 음 표시 |
+| `pipeline/poly.py` | basic-pitch 다성 인식, 멜로디 최저음 자동 설정, 가장 높은 줄 고르기 |
 | `pipeline/rhythm.py` | 템포 추정(자기상관 후 ±4% 다듬기), 16분음표 격자에 맞춤, 조성 추정 |
 | `pipeline/midi_out.py`, `transcribe.py` | MIDI 쓰기, PRD 오류 문구 처리, 단계별 처리 시간 기록 |
 | `web/server.py` | FastAPI: `/api/transcribe`, `/api/midi`, `/api/feedback`, 화면 제공 |
@@ -45,7 +62,7 @@ MIDI를 내보낼 때 원래 인식 결과와 고친 결과를 `data/feedback.js
 .\.venv\Scripts\python.exe -m pipeline 녹음.wav -o out
 ```
 
-템포를 알고 있으면 `--bpm 90`처럼 지정할 수 있다. 결과는 `out/녹음.json`과 `out/녹음.mid`.
+기본은 POLY. 허밍은 `--mode mono`, 멜로디 최저음은 `--floor 60`(MIDI 번호), 템포는 `--bpm 90`. 결과는 `out/녹음.json`과 `out/녹음.mid`.
 
 JSON의 `status`는 PRD 5장의 오류 대응과 맞춰 두었다.
 

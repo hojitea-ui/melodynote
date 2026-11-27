@@ -126,8 +126,13 @@ h1, h2, h3, p { margin: 0; }
 .ctl-row .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 var(--s-1); }
 label.field { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: var(--fs-1);
   letter-spacing: var(--ls-head); text-transform: uppercase; color: var(--ink-3); }
-input.num { width: 72px; height: var(--ctl-h); border: 1px solid var(--line-strong); background: var(--plate); border-radius: 0;
+.mode-row { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--line); }
+.lbl { font-family: var(--mono); font-size: var(--fs-1); letter-spacing: var(--ls-head); text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
+.seg .ko { margin-left: 6px; }
+select.sel:disabled, input.num:disabled { opacity: .45; border-style: dashed; cursor: not-allowed; }
+input.num, select.sel { width: 72px; height: var(--ctl-h); border: 1px solid var(--line-strong); background: var(--plate); border-radius: 0;
   font-family: var(--mono); font-size: var(--fs-3); padding: 0 8px; color: var(--ink); }
+select.sel { width: 96px; cursor: pointer; }
 
 /* ── 계기 숫자 ── */
 .readouts { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--line); background: var(--surface); }
