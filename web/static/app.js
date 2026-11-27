@@ -245,6 +245,7 @@ function loadResult(body, bpmSet) {
     uncertain: n.uncertain, confidence: n.confidence, reason: n.reason, checked: false,
   }));
   S.original = new Map(S.notes.map((n) => [n.id, { pitch: n.pitch, dur16: n.dur16 }]));
+  S.nextId = S.notes.length;
   S.history = [];
   S.selectedId = S.notes.find((n) => n.uncertain)?.id ?? S.notes[0]?.id ?? null;
   S.floor = body.melody_floor ?? null;
@@ -269,7 +270,8 @@ function editedCount() {
     const n = S.notes.find((x) => x.id === id);
     if (!n || n.pitch !== o.pitch || n.dur16 !== o.dur16) c++;
   }
-  return c;
+  // AI가 빠뜨려서 새로 넣은 음도 고친 음으로 센다
+  return c + S.notes.filter((n) => !S.original.has(n.id)).length;
 }
 
 function setRo(id, html) {
@@ -333,6 +335,7 @@ function updateSelPanel() {
     if (n.uncertain) parts.push(`? 불확실 · ${REASON_KO[n.reason] || "인식 불확실"}`);
     else if (n.checked) parts.push("■ 확인함");
     if (changed) parts.push(`고침 (원래 ${noteName(o.pitch, S.key)} · ${LEN_KO[o.dur16]})`);
+    if (n.added) parts.push("+ 추가한 음 (AI가 빠뜨림)");
     $("selState").textContent = parts.join(" · ") || "■ 인식 그대로";
   }
   $("selInfo").textContent = n ? `선택: ${noteName(n.pitch, S.key)} (${S.notes.indexOf(n) + 1} / ${S.notes.length})` : "음을 누르면 선택됩니다";
@@ -348,6 +351,9 @@ function setControls() {
   $("btnMidi").disabled = !has || S.busy;
   ["bpmIn", "btnHalf", "btnDouble", "btnRetempo"].forEach((id) => ($(id).disabled = !S.wav || S.busy || !S.result));
   $("floorSel").disabled = !S.wav || S.busy || !S.result || S.mode !== "poly";
+  $("pickupSel").disabled = !has || S.busy;
+  const fs = firstStart();
+  $("pickupSel").value = fs < 16 && fs % 2 === 0 ? String(fs) : "";
   document.querySelectorAll("#modeSeg button").forEach((b) => (b.disabled = S.busy || !!recorder));
   $("btnRec").disabled = S.busy && !recorder;
   $("btnFile").disabled = S.busy || !!recorder;
@@ -365,9 +371,47 @@ function undo() {
   S.selectedId = h.selectedId;
   refresh();
 }
+/* 빠진 음 추가: 선택한 음 바로 뒤에 같은 높이의 음을 넣는다.
+   뒤에 쉼표(빈칸)가 있으면 그 자리를 채우고, 없으면 뒤 음들을 밀어서 끼워 넣는다. */
+const NOTE_VALUES = [16, 12, 8, 6, 4, 3, 2, 1];
+function addNote() {
+  const n = sel();
+  if (!n || S.busy) return;
+  snapshot();
+  const end = n.start16 + n.dur16;
+  const next = [...S.notes].sort((a, b) => a.start16 - b.start16).find((m) => m.start16 >= end && m.id !== n.id);
+  const gap = next ? next.start16 - end : n.dur16;
+  let dur;
+  if (gap >= 1) {
+    dur = NOTE_VALUES.find((v) => v <= Math.min(gap, n.dur16));
+  } else {
+    dur = n.dur16;
+    for (const m of S.notes) if (m.id !== n.id && m.start16 >= end) m.start16 += dur;
+  }
+  const id = S.nextId++;
+  S.notes.push({ id, pitch: n.pitch, start16: end, dur16: dur, uncertain: false, confidence: 1, reason: null, checked: true, added: true });
+  S.selectedId = id;
+  refresh();
+  preview(sel());
+}
+
+/* 못갖춘마디: 첫 음이 마디 안 원하는 박에서 시작하도록 전체를 옮긴다. 음 자체는 바꾸지 않는다. */
+function firstStart() {
+  return S.notes.length ? Math.min(...S.notes.map((n) => n.start16)) : 0;
+}
+function setPickup(target) {
+  if (!S.notes.length || S.busy) return;
+  const delta = target - firstStart();
+  if (!delta) return;
+  snapshot();
+  for (const m of S.notes) m.start16 += delta;
+  refresh();
+}
+
 function edit(op) {
   const n = sel();
   if (!n || S.busy) return;
+  if (op === "add") { addNote(); return; }
   snapshot();
   if (op === "up1") n.pitch = Math.min(127, n.pitch + 1);
   if (op === "down1") n.pitch = Math.max(0, n.pitch - 1);
@@ -519,6 +563,7 @@ $("btnHalf").addEventListener("click", () => { $("bpmIn").value = Math.round(Num
 $("btnDouble").addEventListener("click", () => { $("bpmIn").value = Math.round(Number($("bpmIn").value || S.bpm) * 2); });
 $("btnRetempo").addEventListener("click", retempo);
 $("floorSel").addEventListener("change", retempo);
+$("pickupSel").addEventListener("change", (e) => setPickup(Number(e.target.value)));
 document.querySelectorAll("#modeSeg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
 $("bpmIn").addEventListener("keydown", (e) => { if (e.key === "Enter") retempo(); });
 $("btnMidi").addEventListener("click", exportMidi);
@@ -529,8 +574,9 @@ document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); return; }
   const map = { ArrowLeft: () => move(-1), ArrowRight: () => move(1),
     ArrowUp: () => edit(e.shiftKey ? "up12" : "up1"), ArrowDown: () => edit(e.shiftKey ? "down12" : "down1"),
-    Delete: () => edit("del"), Backspace: () => edit("del") };
-  if (map[e.key] && (tag !== "button" || e.key.startsWith("Arrow") || e.key === "Delete")) { e.preventDefault(); map[e.key](); }
+    Delete: () => edit("del"), Backspace: () => edit("del"),
+    "+": () => edit("add"), "=": () => edit("add"), Insert: () => edit("add") };
+  if (map[e.key] && (tag !== "button" || e.key.startsWith("Arrow") || ["Delete", "+", "=", "Insert"].includes(e.key))) { e.preventDefault(); map[e.key](); }
 });
 
 // 악보 판 폭이 바뀌면 다시 그린다 (창 크기, 휴대폰 회전)

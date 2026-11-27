@@ -204,11 +204,12 @@
               </div>
             </div>
             <div class="ctl-row">
+              <button class="btn ed" data-op="add"><span>+ ADD</span><span class="ko">뒤에 음 추가</span></button>
               <button class="btn ed" data-op="ok"><span>✓ OK</span><span class="ko">맞는 음</span></button>
               <button class="btn ed" data-op="del"><span>DEL</span><span class="ko">쉼표로</span></button>
               <button class="btn" id="btnUndo" disabled><span>UNDO</span><span class="ko">되돌리기</span></button>
             </div>
-            <p class="keys"><kbd>←</kbd> <kbd>→</kbd> 음 이동 · <kbd>↑</kbd> <kbd>↓</kbd> 반음 · <kbd>Shift</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> 옥타브 · <kbd>Del</kbd> 쉼표로 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기</p>
+            <p class="keys"><kbd>←</kbd> <kbd>→</kbd> 음 이동 · <kbd>↑</kbd> <kbd>↓</kbd> 반음 · <kbd>Shift</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> 옥타브 · <kbd>+</kbd> 뒤에 음 추가 · <kbd>Del</kbd> 쉼표로 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기</p>
           </div>
         </div>
       </div>
@@ -226,6 +227,14 @@
             <button id="btnHalf" disabled>×½</button>
             <button id="btnDouble" disabled>×2</button>
           </div>
+          <label class="field" for="pickupSel">PICKUP</label>
+          <select class="num sel" id="pickupSel" disabled title="못갖춘마디: 첫 음이 마디의 몇 번째 박에서 시작하는지">
+            <option value="0">1박 (정박)</option><option value="2">1박 뒷박</option>
+            <option value="4">2박</option><option value="6">2박 뒷박</option>
+            <option value="8">3박</option><option value="10">3박 뒷박</option>
+            <option value="12">4박</option><option value="14">4박 뒷박</option>
+          </select>
+          <span class="sep" aria-hidden="true"></span>
           <label class="field" for="floorSel" id="floorLbl">LOWEST</label>
           <select class="num sel" id="floorSel" disabled aria-describedby="floorHelp"></select>
           <button class="btn" id="btnRetempo" disabled><span>RE-FIT</span><span class="ko">다시 맞추기</span></button>
