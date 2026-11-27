@@ -50,11 +50,10 @@ body:not(.mode-mono) .mono-only { display: none !important; }
 .top { border-bottom: 1px solid var(--rule-soft); background: var(--paper); }
 .top-in { display: flex; align-items: center; justify-content: space-between; height: 52px; }
 .brand { font-family: var(--serif); font-size: 19px; font-weight: 700; }
-.srv { font-size: 13px; color: var(--graphite-3); display: flex; align-items: center; gap: 8px; }
-.srv::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--graphite-3); }
-.srv.ok::before { background: var(--blue); border-color: var(--blue); }
+/* 서버 상태: 괜찮으면 아무것도 안 보이고, 문제가 있을 때만 문장으로 */
+.srv { font-size: 13px; color: var(--graphite-2); text-align: right; }
+.srv:empty, .srv.ok { display: none; }
 .srv.bad { color: var(--red); }
-.srv.bad::before { border-color: var(--red); }
 
 /* ── 제목 ── */
 .title { padding: 56px 0 28px; max-width: 46rem; }
@@ -107,7 +106,11 @@ body.has-result .file { height: 38px; font-size: 14px; padding: 0 14px; box-shad
 .level { width: 120px; height: 4px; background: var(--rule-soft); border-radius: 2px; overflow: hidden; }
 .level i { display: block; height: 100%; width: 0; background: var(--red); transition: width .1s linear; }
 .mic { font-size: 13px; color: var(--graphite-3); }
-.source { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 13px; margin-left: auto; }
+/* 녹음 시간·입력 크기는 녹음하는 동안에만. 파일 형식 같은 기술 정보는 보이지 않는다 */
+body:not(.recording) .clock, body:not(.recording) .level, body:not(.recording) .mic { display: none; }
+.mic { color: var(--red); }
+.source { display: none !important; }
+.source { flex-wrap: wrap; gap: 4px 22px; font-size: 13px; margin-left: auto; }
 .source div { display: flex; gap: 6px; }
 .source dt { color: var(--graphite-3); }
 .source dd { color: var(--graphite); overflow-wrap: anywhere; }
@@ -130,40 +133,44 @@ body.has-result .file { height: 38px; font-size: 14px; padding: 0 14px; box-shad
 /* 단계 상태 글: 모양 + 낱말 */
 .step-state { font-size: 14px; color: var(--graphite-2); line-height: 1.5; }
 .step-state b { font-weight: 700; white-space: nowrap; margin-right: 4px; }
-.step-state::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--graphite-3);
-  margin-right: 7px; vertical-align: 0; }
-[data-state="active"] > * > .step-state::before, [data-state="active"] .step-state::before { background: var(--graphite); border-color: var(--graphite); }
-[data-state="running"] .step-state::before { background: var(--blue); border-color: var(--blue); animation: blink 1s ease-in-out infinite; }
+.step-state::before { content: none; margin-right: 7px; }
+[data-state="running"] .step-state::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--blue); vertical-align: 1px; animation: blink 1s ease-in-out infinite; }
+[data-state="running"] .step-state { color: var(--blue); }
 [data-state="running"] .step-state b { color: var(--blue); }
-[data-state="done"] .step-state::before { content: "✓"; border: 0; width: auto; height: auto; color: var(--graphite); font-weight: 700; font-size: 13px; }
+[data-state="done"] .step-state::before { content: "✓"; color: var(--graphite); font-weight: 700; font-size: 13px; }
 [data-state="failed"] .step-state { color: var(--red); }
-[data-state="failed"] .step-state::before { content: "✕"; border: 0; width: auto; height: auto; color: var(--red); font-weight: 700; font-size: 12px; }
+[data-state="failed"] .step-state::before { content: "✕"; color: var(--red); font-weight: 700; font-size: 12px; }
 [data-state="idle"] .step-state { color: var(--graphite-3); }
 @keyframes blink { 50% { opacity: .35; } }
 
-/* ── 변환 단계: 오선 아래 가는 줄 ── */
-.process { margin-top: 44px; }
+/* ── 변환: 녹음이 들어오기 전에는 없고, 시작되면 한 줄의 진행 선으로 ── */
+.process[data-state="idle"], .score-area[data-state="idle"] { display: none; }
+.process { margin-top: 36px; }
 .process-head, .score-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; padding-bottom: 10px;
   border-bottom: 1px solid var(--rule); margin-bottom: 14px; }
 .process-head h2, .score-head h2 { font-family: var(--serif); font-size: 24px; font-weight: 700; }
 .process[data-state="idle"] .process-head h2, .score-area[data-state="idle"] .score-head h2 { color: var(--graphite-3); }
-.stages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; counter-reset: s; }
-.stage { position: relative; padding: 14px 0 6px; counter-increment: s; }
-.stage::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: 2px; background: var(--rule-soft); }
-.stage .ko { font-size: 16px; }
-.stage .ko::before { content: counter(s) "  "; font-family: var(--sans); font-weight: 400; color: var(--graphite-3); }
-.stage .desc { font-size: 13px; color: var(--graphite-2); margin-top: 2px; }
-.stage .st { font-size: 13px; margin-top: 8px; color: var(--graphite-3); min-height: 1.6em; }
-.stage .st b { font-weight: 700; }
-.stage[data-st="WAITING"] .ko, .stage[data-st="WAITING"] .desc { color: var(--graphite-3); }
-.stage[data-st="WAITING"] .ko { font-family: var(--sans); font-weight: 400; }
-.stage[data-st="RUNNING"]::before { background: linear-gradient(90deg, var(--blue) 0 40%, var(--blue-tint) 40%); background-size: 250% 100%; animation: run 1.1s linear infinite; }
+/* 네 낱말을 한 줄의 선 위에 놓는다: 음표처럼 점이 찍히고, 지나간 구간은 진하게 */
+.stages { list-style: none; margin: 4px 0 0; padding: 0; display: flex; }
+.stage { position: relative; flex: 1; padding-top: 26px; min-width: 0; }
+.stage::before { content: ""; position: absolute; left: 0; right: 0; top: 8px; height: 2px; background: var(--rule-soft); }
+.stage:last-child::before { right: auto; width: 0; }
+.stage::after { content: ""; position: absolute; left: 0; top: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--page); border: 2px solid var(--rule); box-sizing: border-box; display: grid; place-items: center;
+  font-size: 9px; line-height: 10px; text-align: center; color: var(--page); }
+.stage .ko { font-family: var(--sans); font-weight: 400; font-size: 14px; color: var(--graphite-3); padding-right: 8px; }
+.stage .desc { display: none; }
+.stage .st { font-size: 12px; color: var(--graphite-3); min-height: 1.5em; }
+.stage .st b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.stage[data-st="RUNNING"]::after { background: var(--blue); border-color: var(--blue); box-shadow: 0 0 0 4px var(--blue-tint); animation: blink 1s ease-in-out infinite; }
+.stage[data-st="RUNNING"] .ko { font-family: var(--serif); font-weight: 700; color: var(--blue); }
 .stage[data-st="RUNNING"] .st { color: var(--blue); }
 .stage[data-st="DONE"]::before { background: var(--graphite); }
-.stage[data-st="DONE"] .st { color: var(--graphite); }
-.stage[data-st="FAILED"]::before { background: repeating-linear-gradient(90deg, var(--red) 0 6px, transparent 6px 10px); }
-.stage[data-st="FAILED"] .st { color: var(--red); }
-@keyframes run { from { background-position: 100% 0; } to { background-position: -50% 0; } }
+.stage[data-st="DONE"]::after { content: "✓"; background: var(--graphite); border-color: var(--graphite); }
+.stage[data-st="DONE"] .ko { color: var(--graphite); }
+.stage[data-st="FAILED"]::after { content: "✕"; background: var(--red); border-color: var(--red); }
+.stage[data-st="FAILED"] .ko, .stage[data-st="FAILED"] .st { color: var(--red); }
 .run-result { margin-top: 10px; font-size: 14px; color: var(--graphite-2); min-height: 1.6em; }
 .run-result.done { color: var(--graphite); }
 

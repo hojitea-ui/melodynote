@@ -15,7 +15,7 @@
 <header class="top">
   <div class="page top-in">
     <p class="brand">멜로디노트</p>
-    <p class="srv" id="srvState">서버 확인 중</p>
+    <p class="srv" id="srvState" role="status"></p>
     <span id="secMeter" hidden></span>
   </div>
 </header>
@@ -55,7 +55,7 @@
     <div class="take-meta">
       <span class="clock" id="recClock" aria-live="off">00:00<small> / 01:00</small></span>
       <span class="level" aria-hidden="true"><i id="level"></i></span>
-      <span class="mic" id="micState">마이크 대기</span>
+      <span class="mic" id="micState"></span>
       <span class="fine" id="sourceEmpty">wav, mp3, m4a 파일도 돼요. 녹음은 1분에 저절로 멈춰요.</span>
       <dl class="source" id="sourceSheet" hidden>
         <div><dt>입력</dt><dd id="srcName">-</dd></div>
