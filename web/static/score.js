@@ -1,6 +1,9 @@
 // 악보 그리기 (VexFlow 4). 음 목록(16분음표 격자) → 마디·쉼표·붙임줄 → SVG
 
-const STEP = 16; // 4/4 한 마디 = 16분음표 16개
+/** 박자표 → 한 마디의 16분음표 칸 수 (4/4 = 16, 3/4 = 12, 6/8 = 12, 2/4 = 8) */
+export function measureLen(ts) {
+  return ts.num * (16 / ts.den);
+}
 const VALUES = [16, 12, 8, 6, 4, 3, 2, 1];
 const DUR = { 16: "w", 12: "h", 8: "h", 6: "q", 4: "q", 3: "8", 2: "8", 1: "16" };
 const DOTTED = new Set([12, 6, 3]);
@@ -38,7 +41,7 @@ function splitLen(len) {
 }
 
 /** 음과 쉼표를 마디 단위 조각으로 나눈다. 마디를 넘는 음은 붙임줄로 잇는다. */
-export function layout(notes) {
+export function layout(notes, STEP = 16) {
   const sorted = [...notes].sort((a, b) => a.start16 - b.start16);
   const end = sorted.reduce((m, n) => Math.max(m, n.start16 + n.dur16), 0);
   const total = Math.max(1, Math.ceil(end / STEP)) * STEP;
@@ -89,7 +92,8 @@ export function render(el, model, onSelect) {
   const median = pitches.length ? pitches[Math.floor(pitches.length / 2)] : 60;
   const clef = median < 57 ? "bass" : "treble";
   const restKey = clef === "bass" ? "d/3" : "b/4";
-  const measures = layout(notes);
+  const ts = model.timeSig || { num: 4, den: 4 };
+  const measures = layout(notes, measureLen(ts));
 
   const width = Math.max(320, el.clientWidth - 16);
   const ROW_H = 130;
@@ -123,7 +127,7 @@ export function render(el, model, onSelect) {
       const sw = w * scale;
       const stave = new VF.Stave(x, y, sw);
       if (k === 0) { stave.addClef(clef).addKeySignature(key); }
-      if (i === 0) stave.addTimeSignature("4/4");
+      if (i === 0) stave.addTimeSignature(`${ts.num}/${ts.den}`);
       if (i === measures.length - 1) stave.setEndBarType(VF.Barline.type.END);
       stave.setContext(ctx).draw();
 
@@ -150,10 +154,12 @@ export function render(el, model, onSelect) {
         return sn;
       });
       tickables.forEach((t) => t.setStave(stave));
-      const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).setMode(VF.Voice.Mode.SOFT).addTickables(tickables);
+      const voice = new VF.Voice({ num_beats: ts.num, beat_value: ts.den }).setMode(VF.Voice.Mode.SOFT).addTickables(tickables);
       voice.setStave(stave);
       VF.Accidental.applyAccidentals([voice], key);
-      const beams = VF.Beam.generateBeams(tickables.filter((t) => !t.isRest()), { groups: [new VF.Fraction(1, 4)] });
+      // 8분의 6박자는 8분음표 셋씩, 나머지는 4분음표 단위로 묶는다
+      const group = ts.den === 8 ? new VF.Fraction(3, 8) : new VF.Fraction(1, 4);
+      const beams = VF.Beam.generateBeams(tickables.filter((t) => !t.isRest()), { groups: [group] });
       new VF.Formatter().joinVoices([voice]).format([voice], Math.max(40, sw - (stave.getNoteStartX() - x) - 14));
       voice.draw(ctx, stave);
       beams.forEach((b) => b.setContext(ctx).draw());

@@ -142,7 +142,11 @@
 
       <div class="readouts" role="group" aria-label="악보 정보">
         <div class="ro"><div class="k">KEY</div><div class="v" id="roKey">-</div></div>
-        <div class="ro"><div class="k">TIME</div><div class="v" id="roTime">-</div></div>
+        <div class="ro"><div class="k"><label for="timeSel">TIME</label></div><div class="v">
+          <select class="num sel" id="timeSel" disabled aria-label="박자표">
+            <option value="4/4">4/4</option><option value="3/4">3/4</option>
+            <option value="2/4">2/4</option><option value="6/8">6/8</option>
+          </select></div></div>
         <div class="ro"><div class="k">TEMPO <span class="tag est" id="tempoTag">≈ EST</span></div><div class="v" id="roTempo">-</div></div>
         <div class="ro"><div class="k">NOTES</div><div class="v" id="roNotes">-</div></div>
         <div class="ro"><div class="k">MELODY ≥ <span class="tag est" id="floorTag">≈ AUTO</span></div><div class="v" id="roFloor">-</div></div>
@@ -228,12 +232,7 @@
             <button id="btnDouble" disabled>×2</button>
           </div>
           <label class="field" for="pickupSel">PICKUP</label>
-          <select class="num sel" id="pickupSel" disabled title="못갖춘마디: 첫 음이 마디의 몇 번째 박에서 시작하는지">
-            <option value="0">1박 (정박)</option><option value="2">1박 뒷박</option>
-            <option value="4">2박</option><option value="6">2박 뒷박</option>
-            <option value="8">3박</option><option value="10">3박 뒷박</option>
-            <option value="12">4박</option><option value="14">4박 뒷박</option>
-          </select>
+          <select class="num sel" id="pickupSel" disabled title="못갖춘마디: 첫 음이 마디의 몇 번째 박에서 시작하는지"></select>
           <span class="sep" aria-hidden="true"></span>
           <label class="field" for="floorSel" id="floorLbl">LOWEST</label>
           <select class="num sel" id="floorSel" disabled aria-describedby="floorHelp"></select>

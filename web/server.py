@@ -149,6 +149,8 @@ class NoteIn(BaseModel):
 class MidiIn(BaseModel):
     bpm: float = Field(ge=30, le=300)
     key: str = "C"
+    numerator: int = Field(4, ge=1, le=16)
+    denominator: int = Field(4, ge=2, le=16)
     notes: list[NoteIn] = Field(max_length=2000)
 
 
@@ -156,10 +158,11 @@ class MidiIn(BaseModel):
 def export_midi(body: MidiIn) -> Response:
     q = [QNote(n.pitch, n.start16, n.dur16, 0.0, 0.0, 1.0, False) for n in body.notes]
     q.sort(key=lambda n: n.start16)
+    ts = (body.numerator, body.denominator)
     try:
-        mid = build_midi(q, body.bpm, body.key)
+        mid = build_midi(q, body.bpm, body.key, ts)
     except (KeyError, ValueError):
-        mid = build_midi(q, body.bpm, "C")
+        mid = build_midi(q, body.bpm, "C", ts)
     buf = io.BytesIO()
     mid.save(file=buf)
     return Response(

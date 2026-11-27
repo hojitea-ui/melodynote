@@ -1,5 +1,5 @@
 import { decodeToMono, encodeWav, MAX_SEC, Player, Recorder } from "./audio.js";
-import { noteName, render } from "./score.js";
+import { measureLen, noteName, render } from "./score.js";
 
 const $ = (id) => document.getElementById(id);
 const MSG_EDIT = "틀린 음이 있나요? 눌러서 고칠 수 있어요";
@@ -23,6 +23,7 @@ const S = {
   wav: null, result: null, original: new Map(), notes: [], key: "C", bpm: 120, bpmSet: false,
   selectedId: null, history: [], busy: false,
   mode: "poly", floor: null, floorAuto: true,
+  timeSig: { num: 4, den: 4 },
 };
 const player = new Player();
 
@@ -257,7 +258,7 @@ function loadResult(body, bpmSet) {
 
 function clearScore() {
   S.result = null; S.notes = []; S.original = new Map(); S.selectedId = null; S.history = [];
-  ["roKey", "roTime", "roTempo", "roNotes", "roFloor", "roUnc", "roEdited"].forEach((id) => ($(id).textContent = "-"));
+  ["roKey", "roTempo", "roNotes", "roFloor", "roUnc", "roEdited"].forEach((id) => ($(id).textContent = "-"));
   $("score").innerHTML = "";
   $("score").appendChild(scoreEmpty);
   updateSelPanel();
@@ -288,7 +289,7 @@ function refresh() {
   const total = S.original.size;
   const keyKo = S.key.endsWith("m") ? `${S.key.slice(0, -1)} <span class="ko">단조</span>` : `${S.key} <span class="ko">장조</span>`;
   setRo("roKey", keyKo);
-  setRo("roTime", "4/4");
+  $("timeSel").value = `${S.timeSig.num}/${S.timeSig.den}`;
   setRo("roTempo", `${Math.round(S.bpm)}<small>BPM</small>`);
   $("tempoTag").textContent = S.bpmSet ? "■ SET" : "≈ EST";
   $("tempoTag").title = S.bpmSet ? "직접 정한 템포" : "음 시작점으로 추정한 템포";
@@ -309,7 +310,7 @@ function refresh() {
 const scoreEmpty = $("scoreEmpty");
 function drawScore() {
   try {
-    render($("score"), { notes: S.notes, key: S.key, selectedId: S.selectedId }, (id) => {
+    render($("score"), { notes: S.notes, key: S.key, selectedId: S.selectedId, timeSig: S.timeSig }, (id) => {
       S.selectedId = id;
       refresh();
     });
@@ -324,7 +325,8 @@ function sel() { return S.notes.find((n) => n.id === S.selectedId) || null; }
 function updateSelPanel() {
   const n = sel();
   $("selName").textContent = n ? `${noteName(n.pitch, S.key)} · MIDI ${n.pitch}` : "-";
-  $("selPos").textContent = n ? `${Math.floor(n.start16 / 16) + 1}마디 ${Math.floor((n.start16 % 16) / 4) + 1}박${n.start16 % 4 ? ` +${n.start16 % 4}/4` : ""}` : "-";
+  const ML = measureLen(S.timeSig), BL = 16 / S.timeSig.den;
+  $("selPos").textContent = n ? `${Math.floor(n.start16 / ML) + 1}마디 ${Math.floor((n.start16 % ML) / BL) + 1}박${(n.start16 % ML) % BL ? ` +${(n.start16 % ML) % BL}/${BL}` : ""}` : "-";
   $("selLen").textContent = n ? LEN_KO[n.dur16] || `${n.dur16}/16` : "-";
   $("selConf").textContent = n ? n.confidence.toFixed(2) : "-";
   if (!n) { $("selState").textContent = "-"; }
@@ -352,8 +354,9 @@ function setControls() {
   ["bpmIn", "btnHalf", "btnDouble", "btnRetempo"].forEach((id) => ($(id).disabled = !S.wav || S.busy || !S.result));
   $("floorSel").disabled = !S.wav || S.busy || !S.result || S.mode !== "poly";
   $("pickupSel").disabled = !has || S.busy;
+  $("timeSel").disabled = !has || S.busy;
   const fs = firstStart();
-  $("pickupSel").value = fs < 16 && fs % 2 === 0 ? String(fs) : "";
+  $("pickupSel").value = [...$("pickupSel").options].some((o) => o.value === String(fs)) ? String(fs) : "";
   document.querySelectorAll("#modeSeg button").forEach((b) => (b.disabled = S.busy || !!recorder));
   $("btnRec").disabled = S.busy && !recorder;
   $("btnFile").disabled = S.busy || !!recorder;
@@ -398,6 +401,24 @@ function addNote() {
 /* 못갖춘마디: 첫 음이 마디 안 원하는 박에서 시작하도록 전체를 옮긴다. 음 자체는 바꾸지 않는다. */
 function firstStart() {
   return S.notes.length ? Math.min(...S.notes.map((n) => n.start16)) : 0;
+}
+function fillPickupOptions() {
+  const sel = $("pickupSel"), BL = 16 / S.timeSig.den;
+  sel.innerHTML = "";
+  for (let b = 0; b < S.timeSig.num; b++) {
+    const add = (v, label) => { const o = document.createElement("option"); o.value = String(v); o.textContent = label; sel.appendChild(o); };
+    add(b * BL, b === 0 ? "1박 (정박)" : `${b + 1}박`);
+    if (BL >= 4) add(b * BL + BL / 2, `${b + 1}박 뒷박`);
+  }
+}
+/* 박자표: 마디 나누기만 바뀐다. 음은 그대로. */
+function setTimeSig(value) {
+  const [num, den] = value.split("/").map(Number);
+  S.timeSig = { num, den };
+  const ML = measureLen(S.timeSig), fs = firstStart();
+  if (fs >= ML) for (const m of S.notes) m.start16 -= Math.floor(fs / ML) * ML;
+  fillPickupOptions();
+  refresh();
 }
 function setPickup(target) {
   if (!S.notes.length || S.busy) return;
@@ -521,7 +542,7 @@ async function exportMidi() {
   try {
     const r = await fetch("/api/midi", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bpm: S.bpm, key: S.key, notes }),
+      body: JSON.stringify({ bpm: S.bpm, key: S.key, numerator: S.timeSig.num, denominator: S.timeSig.den, notes }),
     });
     if (!r.ok) throw new Error();
     const blob = await r.blob();
@@ -539,6 +560,7 @@ async function exportMidi() {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       duration_sec: S.result?.duration_sec, bpm: S.bpm, bpm_set: S.bpmSet, key: S.key,
+      time_signature: `${S.timeSig.num}/${S.timeSig.den}`, mode: S.result?.mode,
       timings: S.result?.timings, original: S.result?.notes, edited: S.notes,
       edited_count: ed, original_count: S.original.size,
       edited_ratio: S.original.size ? ed / S.original.size : 0,
@@ -564,6 +586,7 @@ $("btnDouble").addEventListener("click", () => { $("bpmIn").value = Math.round(N
 $("btnRetempo").addEventListener("click", retempo);
 $("floorSel").addEventListener("change", retempo);
 $("pickupSel").addEventListener("change", (e) => setPickup(Number(e.target.value)));
+$("timeSel").addEventListener("change", (e) => setTimeSig(e.target.value));
 document.querySelectorAll("#modeSeg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
 $("bpmIn").addEventListener("keydown", (e) => { if (e.key === "Enter") retempo(); });
 $("btnMidi").addEventListener("click", exportMidi);
@@ -593,6 +616,7 @@ plateObserver.observe(document.querySelector(".plate"));
 window.addEventListener("resize", onPlateResize);
 
 fillFloorOptions();
+fillPickupOptions();
 setStageLabels();
 resetBand();
 setControls();
