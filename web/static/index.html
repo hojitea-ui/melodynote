@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>멜로디노트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;600;700&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
+</head>
+<body>
+<div class="edge" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<header class="status">
+  <div class="wrap">
+    <span class="brand">MELODYNOTE</span>
+    <span class="rule"></span>
+    <span class="meter" id="secMeter">SEC 01 / INPUT</span>
+    <span class="srv" id="srvState">○ SERVER …</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="cover" aria-labelledby="title">
+    <div>
+      <p class="code"><span class="no">[00]</span>/ MELODY TO SCORE</p>
+      <h1 id="title">녹음한 멜로디를 악보로</h1>
+      <p class="sub">흥얼거린 모티브를 오선지 위의 음으로</p>
+    </div>
+    <div>
+      <p class="lead">멜로디 하나를 녹음하거나 파일을 올리면 음높이와 박자를 읽어 악보로 그립니다. 틀린 음은 눌러서 고치고, MIDI로 내보내 곡 작업에 씁니다.</p>
+      <div class="tag-row">
+        <span class="tag">단선율</span><span class="tag">≤ 1:00</span><span class="tag">PYIN</span><span class="tag">MIDI EXPORT</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- [01] 입력 -->
+  <section class="sec" id="secInput" aria-labelledby="h-input">
+    <div class="sec-head">
+      <span class="idx" aria-hidden="true">01</span>
+      <div>
+        <p class="code"><span class="no">[01]</span>/ INPUT</p>
+        <h2 id="h-input">녹음하기</h2>
+      </div>
+      <p class="hint">조용한 곳에서 멜로디 하나만. 1분이 되면 녹음이 저절로 멈춥니다.</p>
+    </div>
+
+    <div class="input-grid">
+      <div class="card">
+        <div class="tab-row"><span class="tab">Record</span><span class="code" id="micState">MIC · 대기</span></div>
+        <div class="rec-clock mono" id="recClock" aria-live="off">00:00<small> / 01:00</small></div>
+        <div class="meter-bar" aria-hidden="true"><i id="level"></i></div>
+        <div class="ctl-row">
+          <button class="btn rec" id="btnRec" aria-pressed="false"><span class="dot" aria-hidden="true"></span><span>REC</span><span class="ko">녹음 시작</span></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="btn" id="btnFile">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V2M4.5 5.5 8 2l3.5 3.5M2 10v4h12v-4"/></svg>
+            <span>FILE</span><span class="ko">파일 올리기</span>
+          </button>
+          <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.flac" hidden>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="tab-row"><span class="tab">Source</span><span class="code">입력 기록</span></div>
+        <div id="sourceEmpty" class="empty">
+          <strong>아직 들어온 소리가 없어요</strong>
+          <ol>
+            <li><b>01</b><span>녹음 버튼을 누르고 멜로디를 부르거나 연주하세요</span></li>
+            <li><b>02</b><span>또는 가지고 있는 음성 파일을 올리세요</span></li>
+            <li><b>03</b><span>변환이 끝나면 아래 악보에서 틀린 음을 고칠 수 있어요</span></li>
+          </ol>
+        </div>
+        <dl class="sheet" id="sourceSheet" hidden>
+          <dt>SOURCE</dt><dd id="srcName">-</dd>
+          <dt>LENGTH</dt><dd><span class="mono" id="srcLen">-</span></dd>
+          <dt>FORMAT</dt><dd><span class="mono" id="srcFmt">-</span></dd>
+          <dt>SENT AS</dt><dd><span class="mono" id="srcSent">-</span></dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 처리 단계 띠 (어두운 바탕 2) -->
+<section class="band" aria-labelledby="h-run">
+  <div class="wrap">
+    <div class="band-head">
+      <span id="h-run">[RUN] / PIPELINE</span><span class="rule"></span>
+      <span class="state" id="runState">IDLE</span>
+    </div>
+    <ol class="stages" id="stages">
+      <li class="stage" data-key="prepare" data-st="WAITING">
+        <div class="top"><span>01/04</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h2l2-5 3 10 3-8 2 3h2"/></svg></div>
+        <div class="en">PREPARE</div><div class="ko">소리 준비 · 브라우저</div>
+        <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
+      </li>
+      <li class="stage" data-key="pitch" data-st="WAITING">
+        <div class="top"><span>02/04</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15c2-8 4-8 6 0s4 8 6 0 2-6 2-6"/></svg></div>
+        <div class="en">PITCH</div><div class="ko">음높이 인식</div>
+        <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
+      </li>
+      <li class="stage" data-key="segment" data-st="WAITING">
+        <div class="top"><span>03/04</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h5M10 10h4M15 14h2M8 3v14M14 3v14"/></svg></div>
+        <div class="en">SEGMENT</div><div class="ko">음 나누기</div>
+        <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
+      </li>
+      <li class="stage" data-key="rhythm" data-st="WAITING">
+        <div class="top"><span>04/04</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 4h16M2 8h16M2 12h16M2 16h16M7 4v12M13 4v12"/></svg></div>
+        <div class="en">RHYTHM</div><div class="ko">박자 맞추기</div>
+        <div class="st"><b>□ WAITING</b><span class="t">--</span></div>
+      </li>
+    </ol>
+    <p class="band-result" id="runResult">RESULT <span class="ko">— 변환하면 결과 요약이 여기 나옵니다</span></p>
+  </div>
+</section>
+
+<main class="wrap">
+  <!-- [02] 악보 -->
+  <section class="sec" id="secScore" aria-labelledby="h-score">
+    <div class="sec-head">
+      <span class="idx" aria-hidden="true">02</span>
+      <div>
+        <p class="code"><span class="no">[02]</span>/ SCORE</p>
+        <h2 id="h-score">악보</h2>
+      </div>
+      <p class="hint">틀린 음을 눌러 고치세요. ?는 인식이 불확실한 음입니다.</p>
+    </div>
+
+    <div class="score-wrap">
+      <div class="note-bar" id="msgBar" hidden><span id="msgText"></span></div>
+
+      <div class="readouts" role="group" aria-label="악보 정보">
+        <div class="ro"><div class="k">KEY</div><div class="v" id="roKey">-</div></div>
+        <div class="ro"><div class="k">TIME</div><div class="v" id="roTime">-</div></div>
+        <div class="ro"><div class="k">TEMPO <span class="tag est" id="tempoTag">≈ EST</span></div><div class="v" id="roTempo">-</div></div>
+        <div class="ro"><div class="k">NOTES</div><div class="v" id="roNotes">-</div></div>
+        <div class="ro"><div class="k">UNCERTAIN ?</div><div class="v" id="roUnc">-</div></div>
+        <div class="ro"><div class="k">EDITED <span class="tag live">LIVE</span></div><div class="v" id="roEdited">-</div></div>
+      </div>
+
+      <div class="plate">
+        <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+        <div id="score" aria-label="악보" role="img">
+          <div class="empty" id="scoreEmpty" style="margin: 16px;">
+            <strong>아직 악보가 없어요</strong>
+            <ol>
+              <li><b>01</b><span>위에서 녹음하거나 파일을 올리세요</span></li>
+              <li><b>02</b><span>변환이 끝나면 여기에 악보가 그려집니다</span></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="plate-foot" id="plateFoot">
+        <span>RENDER VEXFLOW 4.2.5</span><span>·</span><span id="selInfo" class="ko">음을 누르면 선택됩니다</span>
+      </div>
+
+      <div class="edit-grid">
+        <div class="card">
+          <div class="tab-row"><span class="tab">Note</span><span class="code">선택한 음</span></div>
+          <dl class="sheet">
+            <dt>NOTE</dt><dd><span class="mono" id="selName">-</span></dd>
+            <dt>POSITION</dt><dd><span class="mono" id="selPos">-</span></dd>
+            <dt>LENGTH</dt><dd id="selLen">-</dd>
+            <dt>CONFIDENCE</dt><dd><span class="mono" id="selConf">-</span></dd>
+            <dt>STATE</dt><dd id="selState">-</dd>
+          </dl>
+        </div>
+
+        <div class="card">
+          <div class="tab-row"><span class="tab">Edit</span><span class="code">고치기</span></div>
+          <div class="edit-ctl">
+            <div>
+              <div class="lbl">PITCH · 음높이</div>
+              <div class="ctl-row">
+                <button class="btn ed" data-op="up1"><span>▲ 1</span><span class="ko">반음 위</span></button>
+                <button class="btn ed" data-op="down1"><span>▼ 1</span><span class="ko">반음 아래</span></button>
+                <button class="btn ed" data-op="up12"><span>▲ 8VA</span><span class="ko">옥타브 위</span></button>
+                <button class="btn ed" data-op="down12"><span>▼ 8VB</span><span class="ko">옥타브 아래</span></button>
+              </div>
+            </div>
+            <div>
+              <div class="lbl">LENGTH · 길이 (뒤 음들이 함께 밀리거나 당겨집니다)</div>
+              <div class="seg" id="durSeg" role="group" aria-label="음 길이">
+                <button class="ed" data-dur="1" aria-pressed="false">16<span class="sr">분음표</span></button>
+                <button class="ed" data-dur="2" aria-pressed="false">8</button>
+                <button class="ed" data-dur="3" aria-pressed="false">8.</button>
+                <button class="ed" data-dur="4" aria-pressed="false">4</button>
+                <button class="ed" data-dur="6" aria-pressed="false">4.</button>
+                <button class="ed" data-dur="8" aria-pressed="false">2</button>
+                <button class="ed" data-dur="12" aria-pressed="false">2.</button>
+                <button class="ed" data-dur="16" aria-pressed="false">1</button>
+              </div>
+            </div>
+            <div class="ctl-row">
+              <button class="btn ed" data-op="ok"><span>✓ OK</span><span class="ko">맞는 음</span></button>
+              <button class="btn ed" data-op="del"><span>DEL</span><span class="ko">쉼표로</span></button>
+              <button class="btn" id="btnUndo" disabled><span>UNDO</span><span class="ko">되돌리기</span></button>
+            </div>
+            <p class="keys"><kbd>←</kbd> <kbd>→</kbd> 음 이동 · <kbd>↑</kbd> <kbd>↓</kbd> 반음 · <kbd>Shift</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> 옥타브 · <kbd>Del</kbd> 쉼표로 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card result actions">
+        <div class="ctl-row">
+          <button class="btn" id="btnPlay" disabled>
+            <svg viewBox="0 0 16 16" aria-hidden="true" id="playIcon"><path d="M4 2.5v11l9-5.5z"/></svg>
+            <span id="playLbl">PLAY</span><span class="ko" id="playKo">들어 보기</span>
+          </button>
+          <span class="sep" aria-hidden="true"></span>
+          <label class="field" for="bpmIn">TEMPO</label>
+          <input class="num" id="bpmIn" type="number" min="30" max="300" step="1" inputmode="numeric" disabled>
+          <div class="seg">
+            <button id="btnHalf" disabled>×½</button>
+            <button id="btnDouble" disabled>×2</button>
+          </div>
+          <button class="btn" id="btnRetempo" disabled><span>RE-FIT</span><span class="ko">이 템포로 다시 맞추기</span></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="btn" id="btnMidi" disabled>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v9M4.5 7.5 8 11l3.5-3.5M2 14h12"/></svg>
+            <span>MIDI</span><span class="ko">내보내기</span>
+          </button>
+        </div>
+        <p class="fine" style="margin-top: 8px;">내보낼 때 원래 인식 결과와 고친 결과를 이 컴퓨터의 <span class="mono">data/feedback.jsonl</span>에 남깁니다. 고친 음 비율(목표 20% 이하)을 재는 데 씁니다.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="cmyk" aria-hidden="true"><i style="background:var(--id-c)"></i><i style="background:var(--id-m)"></i><i style="background:var(--id-y)"></i><i style="background:var(--id-k)"></i></span>
+    <span>MELODYNOTE · LOCAL</span>
+    <span class="ko">디자인 문법: 인더스트리얼 에디토리얼 UI 견본 (objcat.pages.dev/kit)</span>
+  </div>
+</footer>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>
