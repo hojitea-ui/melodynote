@@ -17,7 +17,8 @@ const KEY_ACC = {
   Am: 0, Em: 1, Bm: 2, "F#m": 3, "C#m": 4, "G#m": 5, Dm: 1, Gm: 2, Cm: 3, Fm: 4, Bbm: 5, Ebm: 6,
 };
 
-const COLOR = { ink: "#30383d", unsure: "#646f75", sel: "#287cc2", play: "#1f69a8" };
+// 흑연 = 음표, 빨간 연필 = 불확실(살펴볼 음), 파란 연필 = 고르는 음·재생
+const COLOR = { ink: "#262a31", unsure: "#c93a2f", sel: "#2e5bba", play: "#2e5bba" };
 
 export function noteName(pitch, key) {
   const names = FLAT_KEYS.has(key) ? FLAT : SHARP;
@@ -115,7 +116,7 @@ export function render(el, model, onSelect) {
   const renderer = new VF.Renderer(el, VF.Renderer.Backends.SVG);
   renderer.resize(width, rows.length * ROW_H + 20);
   const ctx = renderer.getContext();
-  ctx.setFont("IBM Plex Mono", 10);
+  ctx.setFont("Gowun Dodum", 10);
 
   const drawn = []; // { piece, sn }
   rows.forEach((r, ri) => {
@@ -145,7 +146,7 @@ export function render(el, model, onSelect) {
           const color = isSel ? COLOR.sel : isPlay ? COLOR.play : p.note.uncertain ? COLOR.unsure : COLOR.ink;
           sn.setStyle({ fillStyle: color, strokeStyle: color });
           if (p.note.uncertain && p.first) {
-            const a = new VF.Annotation("?").setFont("IBM Plex Mono", 13, "bold")
+            const a = new VF.Annotation("?").setFont("Gowun Batang", 15, "bold")
               .setVerticalJustification(VF.Annotation.VerticalJustify.TOP);
             sn.addModifier(a, 0);
           }

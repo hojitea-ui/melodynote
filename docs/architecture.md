@@ -8,8 +8,8 @@
 flowchart TB
     subgraph Browser["브라우저 (localhost:8000)"]
         direction TB
-        HTML["index.html · style.css<br/>objcat 키트 디자인"]
-        APP["app.js<br/>상태 · 고치기 · 되돌리기 · 처리 띠"]
+        HTML["index.html · style.css<br/>오선지 위의 두 자루 연필"]
+        APP["app.js<br/>상태 · 고치기 · 되돌리기 · 변환 단계"]
         SCORE["score.js<br/>마디 나누기 · 붙임줄 · VexFlow 그리기"]
         AUDIO["audio.js<br/>마이크 녹음 · WAV 변환 · 미리 듣기"]
         APP --> SCORE
@@ -18,7 +18,7 @@ flowchart TB
 
     subgraph CDN["인터넷 (화면 꾸밈)"]
         VF["VexFlow 4.2.5<br/>jsDelivr"]
-        GF["Google Fonts<br/>IBM Plex · Barlow"]
+        GF["Google Fonts<br/>고운바탕 · 고운돋움"]
     end
 
     subgraph Server["로컬 서버 (FastAPI · uvicorn)"]
