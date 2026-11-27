@@ -374,6 +374,29 @@ function undo() {
   S.selectedId = h.selectedId;
   refresh();
 }
+/* 음이름 글자키: C D E F G A B를 누르면 조표에 맞는 음으로, 지금 음에서 가장 가까운 옥타브로 바꾼다 */
+const NATURAL = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+const SHARP_ORDER = "fcgdaeb", FLAT_ORDER = "beadgcf";
+const SHARP_KEYS = { G: 1, D: 2, A: 3, E: 4, B: 5, "F#": 6, Em: 1, Bm: 2, "F#m": 3, "C#m": 4, "G#m": 5 };
+const FLAT_KEYS = { F: 1, Bb: 2, Eb: 3, Ab: 4, Db: 5, Gb: 6, Dm: 1, Gm: 2, Cm: 3, Fm: 4, Bbm: 5, Ebm: 6 };
+function setLetter(letter) {
+  const n = sel();
+  if (!n || S.busy) return;
+  let pc = NATURAL[letter];
+  if (SHARP_ORDER.slice(0, SHARP_KEYS[S.key] || 0).includes(letter)) pc += 1;
+  if (FLAT_ORDER.slice(0, FLAT_KEYS[S.key] || 0).includes(letter)) pc -= 1;
+  const base = n.pitch - (((n.pitch % 12) + 12) % 12);
+  const cands = [-12, 0, 12].map((o) => base + o + pc);
+  const pitch = cands.reduce((b, c) => (Math.abs(c - n.pitch) < Math.abs(b - n.pitch) ? c : b));
+  if (pitch === n.pitch) { n.uncertain = false; n.checked = true; refresh(); return; }
+  snapshot();
+  n.pitch = Math.max(0, Math.min(127, pitch));
+  n.uncertain = false;
+  n.checked = true;
+  preview(n);
+  refresh();
+}
+
 /* 빠진 음 추가: 선택한 음 바로 뒤에 같은 높이의 음을 넣는다.
    뒤에 쉼표(빈칸)가 있으면 그 자리를 채우고, 없으면 뒤 음들을 밀어서 끼워 넣는다. */
 const NOTE_VALUES = [16, 12, 8, 6, 4, 3, 2, 1];
@@ -595,6 +618,7 @@ document.addEventListener("keydown", (e) => {
   const tag = (e.target.tagName || "").toLowerCase();
   if (tag === "input" || tag === "textarea" || !S.notes.length) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); return; }
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && /^[a-gA-G]$/.test(e.key)) { e.preventDefault(); setLetter(e.key.toLowerCase()); return; }
   const map = { ArrowLeft: () => move(-1), ArrowRight: () => move(1),
     ArrowUp: () => edit(e.shiftKey ? "up12" : "up1"), ArrowDown: () => edit(e.shiftKey ? "down12" : "down1"),
     Delete: () => edit("del"), Backspace: () => edit("del"),
